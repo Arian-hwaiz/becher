@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     telegram_chat_id: str = ""
     notify_min_percent: float = 1.0      # Telegram nur ab diesem konservativen Prozent
     anthropic_api_key: str = ""
+    ai_model: str = "claude-opus-5-5"
+    ai_effort: str = "medium"           # low | medium | high
 
     @property
     def active_collectors(self) -> list[str]:

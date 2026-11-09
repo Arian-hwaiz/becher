@@ -163,6 +163,18 @@ CREATE TABLE IF NOT EXISTS bets (
     note          TEXT
 );
 
+-- KI-Auswertungen (Phase 6)
+CREATE TABLE IF NOT EXISTS ai_reports (
+    id            BIGSERIAL PRIMARY KEY,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    kind          TEXT NOT NULL,                 -- assessment | weekly
+    model         TEXT,
+    context_hours INTEGER,
+    input_tokens  INTEGER,
+    output_tokens INTEGER,
+    content       TEXT NOT NULL                  -- JSON (assessment) oder Markdown (weekly)
+);
+
 -- Zustand der Collector für Überwachung
 CREATE TABLE IF NOT EXISTS collector_runs (
     id          BIGSERIAL PRIMARY KEY,

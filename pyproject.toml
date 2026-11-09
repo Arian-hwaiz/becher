@@ -17,6 +17,7 @@ dependencies = [
 dev = ["pytest>=8.0"]
 dashboard = ["streamlit>=1.40", "pandas>=2.2", "plotly>=5.24"]
 browser = ["playwright>=1.47"]
+ai = ["anthropic>=2.7"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

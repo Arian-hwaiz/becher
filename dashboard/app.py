@@ -87,7 +87,7 @@ def outcome_text(row, outcome: str) -> str:
 # ---------------------------------------------------------------- Sidebar
 
 st.sidebar.title("🍺 Becher")
-page = st.sidebar.radio("Seite", ["Scanner", "Überblick", "Quoten je Event", "Wetten", "Collector-Läufe"], label_visibility="collapsed")
+page = st.sidebar.radio("Seite", ["Scanner", "Überblick", "Quoten je Event", "Wetten", "KI", "Collector-Läufe"], label_visibility="collapsed")
 
 try:
     summary = load(q.summary)
@@ -390,6 +390,69 @@ elif page == "Wetten":
             fig = px.line(settled, x="placed_at", y="clv_kum", labels={"placed_at": "", "clv_kum": "Σ CLV %"})
             fig.update_layout(height=280, margin=dict(l=10, r=10, t=10, b=10))
             st.plotly_chart(fig, use_container_width=True)
+
+# ---------------------------------------------------------------- KI (Phase 6)
+
+elif page == "KI":
+    import json as _json
+
+    from common.config import settings as _settings
+    from engine import ai as _ai
+
+    st.title("KI-Auswertung")
+    st.caption(f"Modell {_settings.ai_model}, Denktiefe {_settings.ai_effort}. Die KI rechnet nichts neu, sie ordnet die Zahlen von Becher ein.")
+    if not _settings.anthropic_api_key:
+        st.warning("`ANTHROPIC_API_KEY` fehlt in `.env`. Kontext ansehen geht trotzdem, Auswertungen kosten API-Guthaben und brauchen den Schlüssel.")
+    k1, k2, k3 = st.columns([1, 1, 2])
+    hours = k3.slider("Zeitfenster (Stunden)", 6, 24 * 14, 24, step=6)
+    do_assess = k1.button("Treffer einordnen", type="primary", disabled=not _settings.anthropic_api_key)
+    do_weekly = k2.button("Wochenbericht", disabled=not _settings.anthropic_api_key)
+    if do_assess or do_weekly:
+        with st.spinner("Claude denkt nach …"):
+            try:
+                with db.connect() as conn:
+                    ctx = _ai.build_context(conn, hours=hours)
+                    if do_assess:
+                        result, resp = _ai.assess_opportunities(ctx)
+                        _ai.save_report(conn, "assessment", result.model_dump_json(), resp, hours)
+                    else:
+                        text, resp = _ai.weekly_report(ctx)
+                        _ai.save_report(conn, "weekly", text, resp, hours)
+                st.cache_data.clear()
+                st.success(f"Fertig ({resp.usage.input_tokens} Eingabe-, {resp.usage.output_tokens} Ausgabe-Tokens).")
+            except _ai.AIRefused as exc:
+                st.error(f"Das Modell hat die Anfrage abgelehnt: {exc}")
+            except Exception as exc:  # noqa: BLE001
+                st.error(f"KI-Aufruf fehlgeschlagen: {exc}")
+    with st.expander("Kontext ansehen (das bekommt die KI)"):
+        with db.connect() as conn:
+            st.json(_ai.build_context(conn, hours=hours), expanded=False)
+
+    reports = load(q.ai_reports, 50)
+    if reports.empty:
+        st.info("Noch keine Auswertungen.")
+    else:
+        st.subheader("Auswertungen")
+        for _, r in reports.iterrows():
+            label = f"{r['created_at']:%d.%m. %H:%M} · {'Treffer-Einordnung' if r['kind'] == 'assessment' else 'Wochenbericht'} · {r['context_hours']} h"
+            with st.expander(label, expanded=bool(_ == 0)):
+                if r["kind"] == "assessment":
+                    try:
+                        a = _json.loads(r["content"])
+                    except ValueError:
+                        st.text(r["content"])
+                        continue
+                    st.write(a.get("summary", ""))
+                    for p in sorted(a.get("picks", []), key=lambda p: p.get("priority", 9)):
+                        st.markdown(f"**[{p['priority']}] {p['event']}** · {p['bookmaker']} · {p['market']} {p['outcome']}  \n{p['reason']}"
+                                    + "".join(f"  \n⚠ {x}" for x in p.get("risks", [])))
+                    for w in a.get("warnings", []):
+                        st.warning(w)
+                    for sgg in a.get("suggested_settings", []):
+                        st.info(sgg)
+                else:
+                    st.markdown(r["content"])
+                st.caption(f"{r['model']} · {r['input_tokens']} / {r['output_tokens']} Tokens")
 
 # ---------------------------------------------------------------- Collector-Läufe
 

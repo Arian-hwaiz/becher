@@ -27,6 +27,12 @@ scan:             ## Valuebets und Surebets aus den gespeicherten Quoten suchen
 closing:          ## Schlussquoten sichern, CLV der eigenen Wetten berechnen und auswerten
 	python scripts/closing.py --report
 
+ai-assess:        ## KI: aktuelle Treffer einordnen (braucht ANTHROPIC_API_KEY)
+	python scripts/ai_report.py --assess
+
+ai-weekly:        ## KI: Wochenbericht
+	python scripts/ai_report.py --weekly
+
 dashboard:        ## Dashboard im Browser (http://localhost:8501)
 	streamlit run dashboard/app.py
 

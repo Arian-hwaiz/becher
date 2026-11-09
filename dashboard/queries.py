@@ -148,3 +148,11 @@ def add_bet(conn, bookmaker_id: int, outcome: str, stake: float, price: float, m
 
 def settle_bet(conn, bet_id: int, result: str, payout: float) -> None:
     conn.execute("UPDATE bets SET result=%s, payout=%s WHERE id=%s", (result, payout, bet_id))
+
+
+# ---------------------------------------------------------------- KI (Phase 6)
+
+def ai_reports(conn, limit: int = 50) -> pd.DataFrame:
+    return _df(conn, """
+        SELECT id, created_at, kind, model, context_hours, input_tokens, output_tokens, content
+        FROM ai_reports ORDER BY created_at DESC LIMIT %s""", (limit,))
