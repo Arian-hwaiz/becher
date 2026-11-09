@@ -200,3 +200,8 @@ SELECT 'odds_api', v.src, b.id FROM (VALUES
   ('betway','betway'), ('onexbet','onexbet')
 ) AS v(src, key) JOIN bookmakers b ON b.key = v.key
 ON CONFLICT DO NOTHING;
+
+-- Betfair-Collector schreibt unter source='betfair' mit Schlüssel 'betfair_ex'
+INSERT INTO bookmaker_source_keys (source, source_key, bookmaker_id)
+SELECT 'betfair', 'betfair_ex', id FROM bookmakers WHERE key = 'betfair_ex'
+ON CONFLICT DO NOTHING;

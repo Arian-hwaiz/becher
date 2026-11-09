@@ -204,12 +204,12 @@ class Store:
                     bid = self.bookmaker_id(ev.source, q.bookmaker_source_key)
                     if bid is None:
                         continue
-                    rows.append((observed_at, q.source_ts, mid, bid, q.outcome, q.price, ev.source))
+                    rows.append((observed_at, q.source_ts, mid, bid, q.outcome, q.price, ev.source, q.lay_price, q.liquidity))
         if rows:
             with self.conn.cursor() as cur:
                 cur.executemany(
-                    """INSERT INTO odds_snapshots (observed_at, source_ts, market_id, bookmaker_id, outcome, price, source)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                    """INSERT INTO odds_snapshots (observed_at, source_ts, market_id, bookmaker_id, outcome, price, source, lay_price, liquidity)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                     rows,
                 )
         if self._unknown_bookmakers:

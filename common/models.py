@@ -18,8 +18,10 @@ Outcome = Literal["home", "draw", "away", "over", "under"]
 class Quote:
     bookmaker_source_key: str      # Schlüssel des Buchmachers in der Quelle
     outcome: str                   # Outcome
-    price: Decimal                 # Dezimalquote
+    price: Decimal                 # Dezimalquote (Back-Quote)
     source_ts: datetime | None = None
+    lay_price: Decimal | None = None   # Lay-Quote an der Börse
+    liquidity: Decimal | None = None   # verfügbares/gematchtes Volumen in EUR (Börse)
 
 
 @dataclass

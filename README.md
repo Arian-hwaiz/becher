@@ -57,6 +57,8 @@ Läuft die Datenbank schon und ist das Schema älter, spielt `python scripts/ini
 
 **Was Phase 2 kann (Team-Matching):** Rohnamen der Buchmacher werden normalisiert (Akzente, Füllwörter wie FC/SC, Abkürzungen), über Aliase je Quelle oder Fuzzy-Matching (rapidfuzz) einem kanonischen Team zugeordnet und als `team_aliases` mit Konfidenz gespeichert. Ein Event einer zweiten Quelle (andere Schreibweise, Heim/Gast vertauscht, Anstoß ±2 h) landet auf demselben `events`-Eintrag. Prüfen und nachziehen: `python scripts/match_teams.py` (`--review` zeigt unsichere Aliase). Logik: `engine/matching.py`, Anbindung: `common/db.py`.
 
+**Phase 4 (begonnen):** `collectors/betfair.py` liest die Betfair Exchange (Back-/Lay-Quoten, gematchtes Volumen) über die offizielle API-NG; damit hat der Scan eine zweite Referenz mit Liquiditätsfilter. `collectors/browser_base.py` ist die Vorlage für Buchmacher ohne API (Playwright). Aktive Collector über `COLLECTORS=odds_api,betfair` in `.env`; `python -m collectors.run --scan` sammelt und scannt in einem Takt.
+
 **Rechenkern (Phase 3):**
 - `engine/surebet.py`: Surebets und Middles generisch über eine Auszahlungsmatrix (Viertellinien, Wettsteuer, Börsenkommission). Hintergrund: Dokument 06.
 - `engine/devig.py`: Marge herausrechnen mit fünf Methoden (multiplikativ, additiv, Power, Shin, Logit) und gewichteter Konsens mehrerer Referenzen mit Alters- und Liquiditätsfilter.

@@ -1,6 +1,6 @@
 # Becher – Handbuch
 
-Stand: 10. November 2026 · Repo: https://github.com/Arian-hwaiz/becher
+Stand: 10. November 2026 (Phase 4 begonnen) · Repo: https://github.com/Arian-hwaiz/becher
 
 Dieses Handbuch erklärt das Projekt Becher vollständig: was es ist, wie es funktioniert, wie man es installiert und bedient, wie die Teile zusammenhängen und was noch kommt. Es richtet sich an Arian als Betreiber und an jeden, der später am Code arbeitet.
 
@@ -143,8 +143,8 @@ Wenn die Datenbank schon lief, bevor das Schema geändert wurde: `python scripts
 | Aufgabe | Befehl | Was passiert |
 | --- | --- | --- |
 | Datenbank starten/stoppen | `make db-up` / `make db-down` oder die docker-compose-Befehle | Container `becher-db` auf Port 5432 |
-| Einmal Quoten holen | `python -m collectors.run --once` | Ein Durchlauf über alle Ligen in `ODDS_API_SPORTS` |
-| Dauerbetrieb | `python -m collectors.run` | Alle `COLLECT_INTERVAL_SECONDS` (Standard 300 s) ein Durchlauf |
+| Einmal Quoten holen | `python -m collectors.run --once` | Ein Durchlauf aller aktiven Collector (`COLLECTORS` in `.env`), `--only betfair` für einen |
+| Dauerbetrieb | `python -m collectors.run --scan` | Alle `COLLECT_INTERVAL_SECONDS` (Standard 300 s) ein Durchlauf, danach automatisch der Scan |
 | Treffer suchen | `python scripts/scan.py` | Scan aller kommenden Spiele, schreibt `opportunities`, druckt Liste |
 | Treffer nur anzeigen | `python scripts/scan.py --dry-run --method shin --min-ev 0.01` | ohne Schreiben, andere Devig-Methode, Schwelle 1 % |
 | Dashboard | `streamlit run dashboard/app.py` | Browser auf http://localhost:8501 |
@@ -206,6 +206,8 @@ becher/
 ├── collectors/               Quellen
 │   ├── base.py               abstrakte Klasse Collector.fetch()
 │   ├── odds_api.py           The Odds API v4 (parse_events ist reine Funktion)
+│   ├── betfair.py            Betfair Exchange API-NG: Katalog + MarketBook → Back/Lay/Liquidität
+│   ├── browser_base.py       Vorlage für Buchmacher-Collector per Playwright
 │   └── run.py                Einmal-Lauf oder Schleife mit APScheduler, loggt collector_runs
 ├── engine/                   Rechenkern
 │   ├── matching.py           normalize_name, TeamMatcher, find_event
@@ -331,6 +333,9 @@ Datei `.env` (aus `.env.example`), nie committen:
 | `ODDS_API_REGIONS` | `eu`, `uk`, `us` … | `eu` |
 | `ODDS_API_MARKETS` | `h2h,totals,spreads` | alle drei |
 | `COLLECT_INTERVAL_SECONDS` | Takt des Collectors | 300 |
+| `COLLECTORS` | aktive Collector: `odds_api`, `betfair` | `odds_api` |
+| `BETFAIR_APP_KEY`, `BETFAIR_SESSION_TOKEN` oder `BETFAIR_USERNAME`/`BETFAIR_PASSWORD` | Zugang zur Betfair Exchange API (Developer-Programm; Delayed-Key kostenlos) | leer |
+| `BETFAIR_EVENT_TYPES`, `BETFAIR_HOURS_AHEAD` | Sportarten (1 Fußball, 2 Tennis, 7522 Basketball) und Vorlauf | `1,2,7522`, 48 |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | für Benachrichtigungen (noch nicht angebunden) | leer |
 | `ANTHROPIC_API_KEY` | KI-Schicht (Phase 6) | leer |
 
@@ -350,7 +355,7 @@ Aus `docs/konzept/04-entwicklungsplan-kern.md`, Stand 10. 11. 2026:
 | 2 Matching | Teams/Aliase, Fuzzy-Matching, Event-Zuordnung über Quellen | ✅ fertig |
 | 3 Rechenkern | Devig, Konsens, Valuebets, Surebets/Middles, Scan → opportunities | ✅ fertig (Grundversion) |
 | Dashboard | Scanner-Feed, Überblick, Quoten je Event, Läufe | ✅ fertig (Grundversion) |
-| 4 Eigene Collector | Betfair Exchange API (Preise + Liquidität), 2–3 Buchmacher direkt (Browser-Automatisierung/Playwright), Perioden und mehr Märkte | ⏳ als Nächstes |
+| 4 Eigene Collector | Betfair Exchange API (Back/Lay + Liquidität) ✅; Grundgerüst für Buchmacher-Collector per Playwright ✅; konkrete Buchmacher-Parser, Perioden und mehr Märkte ⏳ | 🔶 teilweise |
 | 5 Tracking + CLV | Wetten erfassen (Dashboard-Formular), Schlussquoten automatisch speichern, CLV je Wette, Auswertung nach Buchmacher/Markt/Methode, Telegram-Alarm | ⏳ |
 | 6 KI-Schicht | Claude API: Treffer erklären und priorisieren, Devig-Methode je Markt am CLV wählen, Limit-Risiko einschätzen, Wochenbericht | ⏳ |
 

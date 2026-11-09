@@ -16,10 +16,24 @@ class Settings(BaseSettings):
     odds_api_markets: str = "h2h,totals"
 
     collect_interval_seconds: int = Field(default=300, ge=30)
+    collectors: str = "odds_api"            # aktive Collector, kommagetrennt: odds_api, betfair
+
+    # Betfair Exchange (https://developer.betfair.com): App-Key plus Session-Token
+    # oder Benutzername/Passwort für den interaktiven Login
+    betfair_app_key: str = ""
+    betfair_session_token: str = ""
+    betfair_username: str = ""
+    betfair_password: str = ""
+    betfair_event_types: str = "1,2,7522"   # 1 Fußball, 2 Tennis, 7522 Basketball
+    betfair_hours_ahead: int = 48
 
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
     anthropic_api_key: str = ""
+
+    @property
+    def active_collectors(self) -> list[str]:
+        return [c.strip() for c in self.collectors.split(",") if c.strip()]
 
     @property
     def sports(self) -> list[str]:

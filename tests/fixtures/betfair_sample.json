@@ -1,0 +1,84 @@
+{
+  "catalogue": [
+    {
+      "marketId": "1.230000001",
+      "marketName": "Match Odds",
+      "description": {"marketType": "MATCH_ODDS", "marketTime": "2026-11-14T14:30:00.000Z"},
+      "eventType": {"id": "1", "name": "Soccer"},
+      "competition": {"id": "59", "name": "German Bundesliga"},
+      "event": {"id": "33000001", "name": "Bayern Munich v SC Freiburg", "countryCode": "DE", "openDate": "2026-11-14T14:30:00.000Z"},
+      "runners": [
+        {"selectionId": 101, "runnerName": "Bayern Munich", "handicap": 0.0},
+        {"selectionId": 102, "runnerName": "SC Freiburg", "handicap": 0.0},
+        {"selectionId": 58805, "runnerName": "The Draw", "handicap": 0.0}
+      ]
+    },
+    {
+      "marketId": "1.230000002",
+      "marketName": "Over/Under 2.5 Goals",
+      "description": {"marketType": "OVER_UNDER_25", "marketTime": "2026-11-14T14:30:00.000Z"},
+      "eventType": {"id": "1", "name": "Soccer"},
+      "competition": {"id": "59", "name": "German Bundesliga"},
+      "event": {"id": "33000001", "name": "Bayern Munich v SC Freiburg", "countryCode": "DE", "openDate": "2026-11-14T14:30:00.000Z"},
+      "runners": [
+        {"selectionId": 47972, "runnerName": "Under 2.5 Goals", "handicap": 0.0},
+        {"selectionId": 47973, "runnerName": "Over 2.5 Goals", "handicap": 0.0}
+      ]
+    },
+    {
+      "marketId": "1.230000003",
+      "marketName": "Asian Handicap",
+      "description": {"marketType": "ASIAN_HANDICAP", "marketTime": "2026-11-14T14:30:00.000Z"},
+      "eventType": {"id": "1", "name": "Soccer"},
+      "competition": {"id": "59", "name": "German Bundesliga"},
+      "event": {"id": "33000001", "name": "Bayern Munich v SC Freiburg", "countryCode": "DE", "openDate": "2026-11-14T14:30:00.000Z"},
+      "runners": [
+        {"selectionId": 101, "runnerName": "Bayern Munich", "handicap": -1.5},
+        {"selectionId": 102, "runnerName": "SC Freiburg", "handicap": 1.5}
+      ]
+    },
+    {
+      "marketId": "1.230000009",
+      "marketName": "Match Odds",
+      "description": {"marketType": "MATCH_ODDS", "marketTime": "2026-11-15T19:00:00.000Z"},
+      "eventType": {"id": "2", "name": "Tennis"},
+      "competition": {"id": "12", "name": "ATP Paris"},
+      "event": {"id": "33000002", "name": "Zverev v Alcaraz", "openDate": "2026-11-15T19:00:00.000Z"},
+      "runners": [
+        {"selectionId": 201, "runnerName": "Zverev", "handicap": 0.0},
+        {"selectionId": 202, "runnerName": "Alcaraz", "handicap": 0.0}
+      ]
+    }
+  ],
+  "books": [
+    {
+      "marketId": "1.230000001", "status": "OPEN", "totalMatched": 125430.5, "lastMatchTime": "2026-11-09T18:52:10.000Z",
+      "runners": [
+        {"selectionId": 101, "status": "ACTIVE", "ex": {"availableToBack": [{"price": 1.37, "size": 2400}], "availableToLay": [{"price": 1.38, "size": 900}]}},
+        {"selectionId": 102, "status": "ACTIVE", "ex": {"availableToBack": [{"price": 9.2, "size": 150}], "availableToLay": [{"price": 9.6, "size": 80}]}},
+        {"selectionId": 58805, "status": "ACTIVE", "ex": {"availableToBack": [{"price": 5.7, "size": 300}], "availableToLay": [{"price": 5.9, "size": 210}]}}
+      ]
+    },
+    {
+      "marketId": "1.230000002", "status": "OPEN", "totalMatched": 40210.0,
+      "runners": [
+        {"selectionId": 47972, "status": "ACTIVE", "ex": {"availableToBack": [{"price": 2.3, "size": 500}], "availableToLay": [{"price": 2.34, "size": 400}]}},
+        {"selectionId": 47973, "status": "ACTIVE", "ex": {"availableToBack": [{"price": 1.74, "size": 800}], "availableToLay": [{"price": 1.76, "size": 650}]}}
+      ]
+    },
+    {
+      "marketId": "1.230000003", "status": "OPEN", "totalMatched": 3100.0,
+      "runners": [
+        {"selectionId": 101, "handicap": -1.5, "status": "ACTIVE", "ex": {"availableToBack": [{"price": 2.02, "size": 100}], "availableToLay": [{"price": 2.1, "size": 60}]}},
+        {"selectionId": 102, "handicap": 1.5, "status": "ACTIVE", "ex": {"availableToBack": [{"price": 1.9, "size": 120}], "availableToLay": [{"price": 1.98, "size": 90}]}}
+      ]
+    },
+    {
+      "marketId": "1.230000009", "status": "OPEN", "totalMatched": 0,
+      "runners": [
+        {"selectionId": 201, "status": "ACTIVE", "ex": {"availableToBack": [{"price": 2.6, "size": 20}], "availableToLay": []}},
+        {"selectionId": 202, "status": "REMOVED", "ex": {"availableToBack": [], "availableToLay": []}}
+      ]
+    }
+  ]
+}
