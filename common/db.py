@@ -165,8 +165,8 @@ class Store:
             if swapped:
                 log.info("Quelle %s listet Heim/Gast vertauscht: %s - %s", ev.source, ev.home_name, ev.away_name)
             self.conn.execute(
-                "INSERT INTO event_source_ids (source, source_id, event_id) VALUES (%s, %s, %s)",
-                (ev.source, ev.source_id, existing),
+                "INSERT INTO event_source_ids (source, source_id, event_id, swap_teams) VALUES (%s, %s, %s, %s)",
+                (ev.source, ev.source_id, existing, swapped),
             )
             return existing
         new = self.conn.execute(

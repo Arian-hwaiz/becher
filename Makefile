@@ -1,4 +1,4 @@
-.PHONY: setup db-up db-down init collect-once collect status test
+.PHONY: setup db-up db-down init collect-once collect status scan test
 
 setup:            ## Virtuelle Umgebung und Abhängigkeiten
 	python -m venv .venv && . .venv/bin/activate && pip install -e ".[dev]"
@@ -20,6 +20,9 @@ collect:          ## Collector im Intervall
 
 status:           ## Was ist in der Datenbank?
 	python scripts/status.py
+
+scan:             ## Valuebets und Surebets aus den gespeicherten Quoten suchen
+	python scripts/scan.py
 
 test:
 	pytest -q

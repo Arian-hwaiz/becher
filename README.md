@@ -52,7 +52,11 @@ Läuft die Datenbank schon und ist das Schema älter, spielt `python scripts/ini
 
 **Was Phase 2 kann (Team-Matching):** Rohnamen der Buchmacher werden normalisiert (Akzente, Füllwörter wie FC/SC, Abkürzungen), über Aliase je Quelle oder Fuzzy-Matching (rapidfuzz) einem kanonischen Team zugeordnet und als `team_aliases` mit Konfidenz gespeichert. Ein Event einer zweiten Quelle (andere Schreibweise, Heim/Gast vertauscht, Anstoß ±2 h) landet auf demselben `events`-Eintrag. Prüfen und nachziehen: `python scripts/match_teams.py` (`--review` zeigt unsichere Aliase). Logik: `engine/matching.py`, Anbindung: `common/db.py`.
 
-**Rechenkern (Start Phase 3):** `engine/surebet.py` löst Surebets und Middles generisch über eine Auszahlungsmatrix (inkl. Viertellinien, Wettsteuer, Börsenkommission). Hintergrund: Dokument 06.
+**Rechenkern (Phase 3):**
+- `engine/surebet.py`: Surebets und Middles generisch über eine Auszahlungsmatrix (Viertellinien, Wettsteuer, Börsenkommission). Hintergrund: Dokument 06.
+- `engine/devig.py`: Marge herausrechnen mit fünf Methoden (multiplikativ, additiv, Power, Shin, Logit) und gewichteter Konsens mehrerer Referenzen mit Alters- und Liquiditätsfilter.
+- `engine/valuebet.py`: EV nach Steuer/Kommission, konservativer EV mit Unsicherheitsband (wächst mit Referenz-Alter und dünnem Markt), Viertel-Kelly.
+- `engine/scan.py` + `python scripts/scan.py`: sucht in den jüngsten Quoten aller kommenden Events Valuebets (gegen scharfe Referenzen/Börse) und Surebets (beste effektive Quote je Ausgang) und schreibt Treffer in `opportunities`. Optionen: `--method`, `--min-ev`, `--max-age`, `--dry-run`.
 
 **Datenbank-Tabellen:** `bookmakers` (mit Steuer und Kommission je Anbieter), `sports`, `leagues`, `teams`, `team_aliases`, `events`, `markets`, `odds_snapshots`, `closing_odds`, `opportunities`, `bets`, `collector_runs`. Schema: `infra/schema.sql`.
 

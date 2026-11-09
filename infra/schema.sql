@@ -81,6 +81,8 @@ CREATE TABLE IF NOT EXISTS event_source_ids (
     event_id   BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     PRIMARY KEY (source, source_id)
 );
+-- Quelle listet Heim/Gast vertauscht (Phase 2 Matching)
+ALTER TABLE event_source_ids ADD COLUMN IF NOT EXISTS swap_teams BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS events_start_time_idx ON events(start_time);
 
@@ -104,6 +106,11 @@ CREATE TABLE IF NOT EXISTS odds_snapshots (
     price         NUMERIC(8,3) NOT NULL,         -- Dezimalquote
     source        TEXT NOT NULL
 );
+
+-- Phase 2/3: Lay-Quoten und Liquidität (Börsen), nachträglich ergänzbar
+ALTER TABLE odds_snapshots ADD COLUMN IF NOT EXISTS is_lay     BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE odds_snapshots ADD COLUMN IF NOT EXISTS lay_price  NUMERIC(8,3);     -- Lay-Quote an der Börse
+ALTER TABLE odds_snapshots ADD COLUMN IF NOT EXISTS liquidity  NUMERIC(12,2);    -- gematchtes Volumen in EUR
 
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname='timescaledb') THEN
@@ -138,6 +145,7 @@ CREATE TABLE IF NOT EXISTS opportunities (
     reference_age_s INTEGER,
     details       JSONB
 );
+CREATE INDEX IF NOT EXISTS opportunities_found_idx ON opportunities(found_at DESC);
 
 -- Eigene Wetten (Phase 5)
 CREATE TABLE IF NOT EXISTS bets (
