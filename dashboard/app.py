@@ -20,6 +20,7 @@ import streamlit as st
 from common import db
 from dashboard import queries as q
 from engine import surebet as sb
+from engine import clv as clvmod
 
 st.set_page_config(page_title="Becher", page_icon="🍺", layout="wide")
 
@@ -86,7 +87,7 @@ def outcome_text(row, outcome: str) -> str:
 # ---------------------------------------------------------------- Sidebar
 
 st.sidebar.title("🍺 Becher")
-page = st.sidebar.radio("Seite", ["Scanner", "Überblick", "Quoten je Event", "Collector-Läufe"], label_visibility="collapsed")
+page = st.sidebar.radio("Seite", ["Scanner", "Überblick", "Quoten je Event", "Wetten", "Collector-Läufe"], label_visibility="collapsed")
 
 try:
     summary = load(q.summary)
@@ -294,6 +295,101 @@ elif page == "Quoten je Event":
                               labels={"observed_at": "", "price": "Quote", "bookmaker": "Buchmacher", "outcome": "Ausgang"})
                 fig.update_layout(height=300, margin=dict(l=10, r=10, t=10, b=10))
                 st.plotly_chart(fig, use_container_width=True)
+
+# ---------------------------------------------------------------- Wetten (Phase 5)
+
+elif page == "Wetten":
+    st.title("Eigene Wetten & CLV")
+    st.caption("Wetten hier erfassen. Schlussquoten und CLV berechnet `python scripts/closing.py` (oder der Collector mit `--scan`) nach Anpfiff.")
+    stats = load(q.bet_stats)
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Wetten", int(stats["n"] or 0))
+    c2.metric("Gewinn (abgerechnet)", f"{float(stats['profit'] or 0):+.2f}")
+    c3.metric("Ø CLV", f"{float(stats['clv']):+.2f} %" if stats["clv"] is not None else "–",
+              help="Closing Line Value: eigene Quote gegenüber fairer Schlussquote der Referenz")
+    n_clv = int(stats["n_clv"] or 0)
+    c4.metric("CLV positiv", f"{int(stats['clv_pos'] or 0)}/{n_clv}" + (f" ({int(stats['clv_pos'] or 0) / n_clv * 100:.0f} %)" if n_clv else ""))
+
+    names = load(q.bookmaker_names)
+    with st.expander("Neue Wette erfassen", expanded=stats["n"] == 0):
+        events = load(q.upcoming_events, 300)
+        ev_opts = {"– ohne Event –": None}
+        ev_opts.update({f"{r.start_time:%d.%m. %H:%M}  {r.home_name} – {r.away_name}": int(r.id) for r in events.itertuples()})
+        f1, f2 = st.columns(2)
+        ev_label = f1.selectbox("Event", list(ev_opts))
+        event_id = ev_opts[ev_label]
+        market_id = None
+        if event_id is not None:
+            mk = load(q.event_markets, event_id)
+            mk_opts = {market_text(r): int(r["id"]) for _, r in mk.iterrows()} if not mk.empty else {}
+            market_id = mk_opts[f2.selectbox("Markt", list(mk_opts))] if mk_opts else None
+        else:
+            f2.selectbox("Markt", ["– zuerst Event wählen –"], disabled=True)
+        with st.form("bet_form"):
+            g1, g2, g3, g4 = st.columns(4)
+            bm_name = g1.selectbox("Buchmacher", sorted(names.values()))
+            outcome = g2.selectbox("Ausgang", ["home", "draw", "away", "over", "under"])
+            price = g3.number_input("Quote", min_value=1.01, value=2.00, step=0.01, format="%.3f")
+            stake = g4.number_input("Einsatz", min_value=0.0, value=10.0, step=1.0)
+            h1, h2 = st.columns([1, 3])
+            fair = h1.number_input("Faire Quote beim Setzen (optional)", min_value=0.0, value=0.0, step=0.01, format="%.3f")
+            note = h2.text_input("Notiz")
+            if st.form_submit_button("Wette speichern", type="primary"):
+                bm_id = next(k for k, v in names.items() if v == bm_name)
+                with db.connect() as conn:
+                    bet_id = q.add_bet(conn, bm_id, outcome, float(stake), float(price), market_id,
+                                       float(fair) if fair > 0 else None, note)
+                st.cache_data.clear()
+                st.success(f"Wette #{bet_id} gespeichert.")
+                st.rerun()
+
+    bets_df = load(q.bets, 500)
+    if bets_df.empty:
+        st.info("Noch keine Wetten erfasst.")
+    else:
+        bets_df["event"] = bets_df.apply(lambda r: f"{r.home_name} – {r.away_name}" if isinstance(r.home_name, str) else "–", axis=1)
+        bets_df["markt"] = bets_df.apply(lambda r: market_text(r) if isinstance(r.type, str) else "–", axis=1)
+        bets_df["gewinn"] = bets_df.apply(lambda r: (float(r.payout or 0) - float(r.stake)) if r.result != "open" else None, axis=1)
+        st.subheader("Wetten")
+        st.dataframe(bets_df[["id", "placed_at", "event", "markt", "bookmaker", "outcome", "price", "stake",
+                              "fair_price_at_bet", "result", "gewinn", "clv", "note"]]
+                     .rename(columns={"placed_at": "gesetzt", "bookmaker": "Buchmacher", "outcome": "Ausgang",
+                                      "price": "Quote", "stake": "Einsatz", "fair_price_at_bet": "fair", "result": "Ergebnis",
+                                      "clv": "CLV %"}),
+                     hide_index=True, use_container_width=True,
+                     column_config={"CLV %": st.column_config.NumberColumn(format="%+.2f"),
+                                    "gewinn": st.column_config.NumberColumn(format="%+.2f")})
+
+        open_bets = bets_df[bets_df["result"] == "open"]
+        if not open_bets.empty:
+            st.subheader("Wette abrechnen")
+            s1, s2, s3 = st.columns([3, 2, 1])
+            opts = {f"#{r.id} {r.event} · {r.bookmaker} {r.outcome} @ {float(r.price):.3f}": int(r.id) for r in open_bets.itertuples()}
+            sel = s1.selectbox("Offene Wette", list(opts))
+            res = s2.selectbox("Ergebnis", ["won", "lost", "void", "half_won", "half_lost"])
+            if s3.button("Abrechnen"):
+                bet_id = opts[sel]
+                row = open_bets[open_bets["id"] == bet_id].iloc[0]
+                payout = clvmod.settle(float(row.stake), float(row.price), res)
+                with db.connect() as conn:
+                    q.settle_bet(conn, bet_id, res, round(payout, 2))
+                st.cache_data.clear()
+                st.rerun()
+
+        by_bm = load(q.clv_by_bookmaker)
+        if not by_bm.empty and by_bm["clv"].notna().any():
+            st.subheader("CLV je Buchmacher")
+            fig = px.bar(by_bm.dropna(subset=["clv"]), x="bookmaker", y="clv", text="n_clv",
+                         labels={"bookmaker": "", "clv": "Ø CLV %", "n_clv": "Wetten"})
+            fig.update_layout(height=300, margin=dict(l=10, r=10, t=10, b=10))
+            st.plotly_chart(fig, use_container_width=True)
+        settled = bets_df.dropna(subset=["clv"]).sort_values("placed_at")
+        if len(settled) >= 2:
+            st.subheader("CLV-Verlauf (kumuliert)")
+            settled["clv_kum"] = settled["clv"].astype(float).cumsum()
+            fig = px.line(settled, x="placed_at", y="clv_kum", labels={"placed_at": "", "clv_kum": "Σ CLV %"})
+            fig.update_layout(height=280, margin=dict(l=10, r=10, t=10, b=10))
+            st.plotly_chart(fig, use_container_width=True)
 
 # ---------------------------------------------------------------- Collector-Läufe
 

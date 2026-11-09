@@ -24,6 +24,9 @@ status:           ## Was ist in der Datenbank?
 scan:             ## Valuebets und Surebets aus den gespeicherten Quoten suchen
 	python scripts/scan.py
 
+closing:          ## Schlussquoten sichern, CLV der eigenen Wetten berechnen und auswerten
+	python scripts/closing.py --report
+
 dashboard:        ## Dashboard im Browser (http://localhost:8501)
 	streamlit run dashboard/app.py
 

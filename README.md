@@ -59,13 +59,15 @@ Läuft die Datenbank schon und ist das Schema älter, spielt `python scripts/ini
 
 **Phase 4 (begonnen):** `collectors/betfair.py` liest die Betfair Exchange (Back-/Lay-Quoten, gematchtes Volumen) über die offizielle API-NG; damit hat der Scan eine zweite Referenz mit Liquiditätsfilter. `collectors/browser_base.py` ist die Vorlage für Buchmacher ohne API (Playwright). Aktive Collector über `COLLECTORS=odds_api,betfair` in `.env`; `python -m collectors.run --scan` sammelt und scannt in einem Takt.
 
+**Phase 5 (Tracking + CLV):** Dashboard-Seite „Wetten“ zum Erfassen und Abrechnen eigener Wetten; `engine/clv.py` sichert nach Anpfiff die Schlussquoten (`closing_odds`) und berechnet je Wette den CLV gegen die faire Schlussquote der scharfen Referenz; `python scripts/closing.py --report` macht das von Hand und druckt die Auswertung je Buchmacher, `python -m collectors.run --scan` automatisch. `engine/notify.py` schickt neue Treffer ab `NOTIFY_MIN_PERCENT` per Telegram (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`).
+
 **Rechenkern (Phase 3):**
 - `engine/surebet.py`: Surebets und Middles generisch über eine Auszahlungsmatrix (Viertellinien, Wettsteuer, Börsenkommission). Hintergrund: Dokument 06.
 - `engine/devig.py`: Marge herausrechnen mit fünf Methoden (multiplikativ, additiv, Power, Shin, Logit) und gewichteter Konsens mehrerer Referenzen mit Alters- und Liquiditätsfilter.
 - `engine/valuebet.py`: EV nach Steuer/Kommission, konservativer EV mit Unsicherheitsband (wächst mit Referenz-Alter und dünnem Markt), Viertel-Kelly.
 - `engine/scan.py` + `python scripts/scan.py`: sucht in den jüngsten Quoten aller kommenden Events Valuebets (gegen scharfe Referenzen/Börse) und Surebets (beste effektive Quote je Ausgang) und schreibt Treffer in `opportunities`. Optionen: `--method`, `--min-ev`, `--max-age`, `--dry-run`.
 
-**Dashboard:** `streamlit run dashboard/app.py` öffnet die Scanner-Ansicht: links Filter (Art, Zeitraum, Mindest-Prozent, Alter, Sportarten, Buchmacher, Sortierung, Gesamteinsatz, Auto-Refresh), in der Mitte der Treffer-Feed (Prozent, Sport, Alter, Spiel, Markt, Buchmacher, Quote, faire Quote, Referenz), rechts der Einsatzrechner (Surebet-Einsätze nach Steuer/Kommission, Gewinn; bei Valuebets effektive Quote, erwarteter Gewinn, Viertel-Kelly). Weitere Seiten: Überblick, Quoten je Event (Tabelle mit Bestquoten und Verlauf), Collector-Läufe.
+**Dashboard:** `streamlit run dashboard/app.py` öffnet die Scanner-Ansicht: links Filter (Art, Zeitraum, Mindest-Prozent, Alter, Sportarten, Buchmacher, Sortierung, Gesamteinsatz, Auto-Refresh), in der Mitte der Treffer-Feed (Prozent, Sport, Alter, Spiel, Markt, Buchmacher, Quote, faire Quote, Referenz), rechts der Einsatzrechner (Surebet-Einsätze nach Steuer/Kommission, Gewinn; bei Valuebets effektive Quote, erwarteter Gewinn, Viertel-Kelly). Weitere Seiten: Überblick, Quoten je Event (Tabelle mit Bestquoten und Verlauf), Wetten (eigene Wetten, CLV), Collector-Läufe.
 
 **Datenbank-Tabellen:** `bookmakers` (mit Steuer und Kommission je Anbieter), `sports`, `leagues`, `teams`, `team_aliases`, `events`, `markets`, `odds_snapshots`, `closing_odds`, `opportunities`, `bets`, `collector_runs`. Schema: `infra/schema.sql`.
 

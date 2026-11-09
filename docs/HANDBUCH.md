@@ -40,7 +40,9 @@ Becher ist ein **privater Quoten-Scanner**. Er sammelt laufend Wettquoten vieler
 - Ein Dashboard im Browser zeigen: Scanner-Feed wie bei Betburger, Überblick, Quoten je Spiel, Collector-Läufe.
 - Demo-Daten erzeugen, um alles ohne API-Key auszuprobieren.
 
-**Was noch fehlt:** eigene Collector direkt bei Buchmachern und Betfair (Phase 4), Wetten erfassen und CLV messen (Phase 5), KI-Schicht (Phase 6), Telegram-Benachrichtigung.
+- Eigene Wetten erfassen und abrechnen, Schlussquoten automatisch sichern, CLV je Wette und je Buchmacher auswerten, Telegram-Nachricht bei neuen Treffern (Phase 5).
+
+**Was noch fehlt:** Collector direkt bei einzelnen Buchmachern (Phase 4, Rest), KI-Schicht (Phase 6).
 
 ---
 
@@ -150,9 +152,12 @@ Wenn die Datenbank schon lief, bevor das Schema geändert wurde: `python scripts
 | Dashboard | `streamlit run dashboard/app.py` | Browser auf http://localhost:8501 |
 | Status in der Konsole | `python scripts/status.py` | letzte Läufe, Abdeckung je Buchmacher, kommende Events |
 | Team-Matching prüfen | `python scripts/match_teams.py --review` | zeigt unsichere Aliase (Konfidenz < 0,95) |
-| Tests | `pytest -q` | 43 Tests, Datenbanktests nur mit `BECHER_TEST_DATABASE_URL` |
+| Schlussquoten + CLV | `python scripts/closing.py --report` | sichert Schlussquoten begonnener Spiele, berechnet CLV der eigenen Wetten, druckt Auswertung je Buchmacher (läuft auch automatisch im Collector mit `--scan`) |
+| Tests | `pytest -q` | 52 Tests, Datenbanktests nur mit `BECHER_TEST_DATABASE_URL` |
 
 **Empfohlener Rhythmus:** Collector dauerhaft laufen lassen (ein PowerShell-Fenster), Scan alle paar Minuten (zweites Fenster, z. B. `while ($true) { python scripts/scan.py; Start-Sleep 120 }`), Dashboard offen. Die Odds-API liefert Prematch-Quoten mit einigen Minuten Verzögerung; für Live-Wetten ist Becher noch nicht gedacht.
+
+**Telegram-Alarm einrichten:** In Telegram `@BotFather` öffnen, `/newbot` senden, Namen vergeben, den Token in `.env` als `TELEGRAM_BOT_TOKEN` eintragen. Dem neuen Bot eine beliebige Nachricht schicken, dann im Browser `https://api.telegram.org/bot<TOKEN>/getUpdates` aufrufen und die Zahl hinter `"chat":{"id":` als `TELEGRAM_CHAT_ID` eintragen. Ab dann meldet `python -m collectors.run --scan` jeden neuen Treffer ab `NOTIFY_MIN_PERCENT` (Standard 1 %) mit Spiel, Markt, Buchmacher, Quote, fairer Quote und EV. Jeder Treffer wird je Programmlauf nur einmal gemeldet.
 
 **Kontingent der Odds-API:** Jeder Aufruf pro Liga und Region kostet 1 Anfrage je Markt. Mit 3 Ligen, 1 Region, 3 Märkten und 5-Minuten-Takt sind das ca. 2 600 Anfragen pro Tag. Der Collector loggt das Restkontingent (`x-requests-remaining`).
 
@@ -160,7 +165,7 @@ Wenn die Datenbank schon lief, bevor das Schema geändert wurde: `python scripts
 
 ## 6. Das Dashboard
 
-Start: `streamlit run dashboard/app.py`. Vier Seiten, Auswahl links oben.
+Start: `streamlit run dashboard/app.py`. Fünf Seiten, Auswahl links oben.
 
 ### Scanner (Hauptseite, nach dem Vorbild der Betburger-Surebet-Seite)
 
@@ -182,6 +187,14 @@ Kennzahlen (kommende Events, Quoten der letzten Stunde, aktive Buchmacher, Value
 ![Quoten je Event](bilder/dashboard-quoten.png)
 
 Ein Spiel auswählen, dann je Markt eine Tabelle Buchmacher × Ausgang mit der jeweils besten Quote grün markiert, darunter die Auszahlung der besten Quoten (über 100 % = Surebet vor Steuer) und ein Linienchart der Quotenbewegung der letzten 72 Stunden.
+
+### Wetten
+
+![Wetten](bilder/dashboard-wetten.png)
+
+Hier werden die eigenen Wetten erfasst und am Ende gemessen. Oben Kennzahlen (Anzahl, Gewinn der abgerechneten Wetten, Ø CLV, Anteil positiver CLV). Im Formular Event und Markt aus der Datenbank wählen (dann kann Becher später die Schlussquote zuordnen), Buchmacher, Ausgang, Quote, Einsatz, optional die faire Quote zum Zeitpunkt des Setzens (steht in der Trefferkarte) und eine Notiz. Darunter die Tabelle aller Wetten mit Ergebnis, Gewinn und CLV, ein Abschnitt zum Abrechnen offener Wetten (gewonnen, verloren, void, halb gewonnen/verloren; die Auszahlung rechnet Becher), ein Balkendiagramm Ø CLV je Buchmacher und der kumulierte CLV-Verlauf.
+
+**Wie der CLV entsteht:** Nach Anpfiff sichert `scripts/closing.py` (oder der Collector mit `--scan`) je Markt, Buchmacher und Ausgang die letzte Quote vor dem Anstoß als Schlussquote (`closing_odds`, höchstens 6 h alt). Aus den Schlussquoten der scharfen Referenzen (Pinnacle & Co.) wird mit der Power-Methode die faire Schlussquote gebildet; CLV = eigene Quote ÷ faire Schlussquote − 1. Positiver CLV über viele Wetten ist der eigentliche Beleg für eine Kante, unabhängig davon, ob die einzelne Wette gewonnen hat.
 
 ### Collector-Läufe
 
@@ -336,7 +349,8 @@ Datei `.env` (aus `.env.example`), nie committen:
 | `COLLECTORS` | aktive Collector: `odds_api`, `betfair` | `odds_api` |
 | `BETFAIR_APP_KEY`, `BETFAIR_SESSION_TOKEN` oder `BETFAIR_USERNAME`/`BETFAIR_PASSWORD` | Zugang zur Betfair Exchange API (Developer-Programm; Delayed-Key kostenlos) | leer |
 | `BETFAIR_EVENT_TYPES`, `BETFAIR_HOURS_AHEAD` | Sportarten (1 Fußball, 2 Tennis, 7522 Basketball) und Vorlauf | `1,2,7522`, 48 |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | für Benachrichtigungen (noch nicht angebunden) | leer |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Telegram-Alarm bei neuen Treffern (Einrichtung: Abschnitt 5) | leer |
+| `NOTIFY_MIN_PERCENT` | Telegram nur bei Treffern ab diesem konservativen Prozent | 1.0 |
 | `ANTHROPIC_API_KEY` | KI-Schicht (Phase 6) | leer |
 
 Scan-Parameter (`engine.scan.ScanConfig`, per CLI `--method`, `--min-ev`, `--max-age`): Devig-Methode, Mindest-EV, maximales Quotenalter, Mindestliquidität Börse, n_eff, z, Gewichte sharp/exchange.
@@ -356,10 +370,10 @@ Aus `docs/konzept/04-entwicklungsplan-kern.md`, Stand 10. 11. 2026:
 | 3 Rechenkern | Devig, Konsens, Valuebets, Surebets/Middles, Scan → opportunities | ✅ fertig (Grundversion) |
 | Dashboard | Scanner-Feed, Überblick, Quoten je Event, Läufe | ✅ fertig (Grundversion) |
 | 4 Eigene Collector | Betfair Exchange API (Back/Lay + Liquidität) ✅; Grundgerüst für Buchmacher-Collector per Playwright ✅; konkrete Buchmacher-Parser, Perioden und mehr Märkte ⏳ | 🔶 teilweise |
-| 5 Tracking + CLV | Wetten erfassen (Dashboard-Formular), Schlussquoten automatisch speichern, CLV je Wette, Auswertung nach Buchmacher/Markt/Methode, Telegram-Alarm | ⏳ |
+| 5 Tracking + CLV | Wetten erfassen (Dashboard-Seite „Wetten“) ✅, Schlussquoten automatisch speichern ✅, CLV je Wette ✅, Auswertung je Buchmacher ✅, Telegram-Alarm ✅; Auswertung nach Markt/Devig-Methode ⏳ | ✅ Grundversion |
 | 6 KI-Schicht | Claude API: Treffer erklären und priorisieren, Devig-Methode je Markt am CLV wählen, Limit-Risiko einschätzen, Wochenbericht | ⏳ |
 
-Verbesserungen, die im Konzept vorgesehen sind und noch offen stehen: Telegram-Benachrichtigung bei neuen Treffern, Backtesting über die gespeicherte Zeitreihe, Monte-Carlo-Simulation der Strategie, Schlussquoten-Vorhersage, Account-Health (Limit-Risiko je Buchmacher).
+Verbesserungen, die im Konzept vorgesehen sind und noch offen stehen: Backtesting über die gespeicherte Zeitreihe, Monte-Carlo-Simulation der Strategie, Schlussquoten-Vorhersage, Account-Health (Limit-Risiko je Buchmacher).
 
 ---
 

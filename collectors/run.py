@@ -60,9 +60,14 @@ def run_once(names: list[str] | None = None, scan: bool = False) -> None:
             continue
         run_collector(collector)
     if scan:
+        from engine.clv import capture_closing_odds, update_bets_clv
+        from engine.notify import notify_new
         from engine.scan import run_scan
         with db.connect() as conn:
-            run_scan(conn)
+            found = run_scan(conn)
+            notify_new(conn, found, min_percent=settings.notify_min_percent)
+            capture_closing_odds(conn)
+            update_bets_clv(conn)
 
 
 def main() -> None:

@@ -103,3 +103,48 @@ def latest_opportunities(conn, hours: int = 24, limit: int = 500) -> pd.DataFram
     key = df[["kind", "event_id", "type", "line", "bookmaker", "outcome"]].fillna("").astype(str).agg("|".join, axis=1)
     df = df.assign(_key=key).sort_values("found_at", ascending=False).drop_duplicates("_key").drop(columns="_key")
     return df.head(limit)
+
+
+# ---------------------------------------------------------------- Wetten (Phase 5)
+
+def bets(conn, limit: int = 500) -> pd.DataFrame:
+    return _df(conn, """
+        SELECT b.id, b.placed_at, k.name AS bookmaker, b.outcome, b.stake, b.price, b.fair_price_at_bet,
+               b.result, b.payout, b.clv, b.note, b.market_id,
+               e.home_name, e.away_name, e.start_time, m.type, m.line
+        FROM bets b JOIN bookmakers k ON k.id = b.bookmaker_id
+        LEFT JOIN markets m ON m.id = b.market_id LEFT JOIN events e ON e.id = m.event_id
+        ORDER BY b.placed_at DESC LIMIT %s""", (limit,))
+
+
+def bet_stats(conn) -> dict[str, Any]:
+    r = conn.execute("""
+        SELECT count(*) AS n,
+               count(*) FILTER (WHERE result <> 'open') AS settled,
+               coalesce(sum(stake) FILTER (WHERE result <> 'open'), 0) AS stake_settled,
+               coalesce(sum(coalesce(payout, 0) - stake) FILTER (WHERE result <> 'open'), 0) AS profit,
+               avg(clv) AS clv, count(clv) AS n_clv,
+               count(*) FILTER (WHERE clv > 0) AS clv_pos
+        FROM bets""").fetchone()
+    return dict(r)
+
+
+def clv_by_bookmaker(conn) -> pd.DataFrame:
+    return _df(conn, """
+        SELECT k.name AS bookmaker, count(*) AS n, avg(b.clv) AS clv, count(b.clv) AS n_clv,
+               coalesce(sum(coalesce(b.payout, 0) - b.stake) FILTER (WHERE b.result <> 'open'), 0) AS profit
+        FROM bets b JOIN bookmakers k ON k.id = b.bookmaker_id GROUP BY k.name ORDER BY n DESC""")
+
+
+def add_bet(conn, bookmaker_id: int, outcome: str, stake: float, price: float, market_id: int | None,
+            fair_price: float | None, note: str) -> int:
+    row = conn.execute(
+        """INSERT INTO bets (bookmaker_id, outcome, stake, price, market_id, fair_price_at_bet, note)
+           VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+        (bookmaker_id, outcome, stake, price, market_id, fair_price, note or None),
+    ).fetchone()
+    return row["id"]
+
+
+def settle_bet(conn, bet_id: int, result: str, payout: float) -> None:
+    conn.execute("UPDATE bets SET result=%s, payout=%s WHERE id=%s", (result, payout, bet_id))
