@@ -1,0 +1,82 @@
+[
+  {
+    "id": "a1b2c3d4e5f60718",
+    "sport_key": "soccer_germany_bundesliga",
+    "sport_title": "Bundesliga - Germany",
+    "commence_time": "2026-11-14T14:30:00Z",
+    "home_team": "Bayern Munich",
+    "away_team": "SC Freiburg",
+    "bookmakers": [
+      {
+        "key": "pinnacle",
+        "title": "Pinnacle",
+        "last_update": "2026-11-09T18:50:12Z",
+        "markets": [
+          {"key": "h2h", "last_update": "2026-11-09T18:50:12Z", "outcomes": [
+            {"name": "Bayern Munich", "price": 1.36},
+            {"name": "SC Freiburg", "price": 8.90},
+            {"name": "Draw", "price": 5.60}
+          ]},
+          {"key": "totals", "last_update": "2026-11-09T18:50:12Z", "outcomes": [
+            {"name": "Over", "price": 1.68, "point": 3.5},
+            {"name": "Under", "price": 2.28, "point": 3.5}
+          ]}
+        ]
+      },
+      {
+        "key": "tipico_de",
+        "title": "Tipico",
+        "last_update": "2026-11-09T18:49:40Z",
+        "markets": [
+          {"key": "h2h", "last_update": "2026-11-09T18:49:40Z", "outcomes": [
+            {"name": "Bayern Munich", "price": 1.33},
+            {"name": "SC Freiburg", "price": 9.50},
+            {"name": "Draw", "price": 5.75}
+          ]},
+          {"key": "totals", "last_update": "2026-11-09T18:49:40Z", "outcomes": [
+            {"name": "Over", "price": 1.75, "point": 3.5},
+            {"name": "Under", "price": 2.05, "point": 3.5}
+          ]},
+          {"key": "spreads", "last_update": "2026-11-09T18:49:40Z", "outcomes": [
+            {"name": "Bayern Munich", "price": 1.90, "point": -1.5},
+            {"name": "SC Freiburg", "price": 1.90, "point": 1.5}
+          ]}
+        ]
+      },
+      {
+        "key": "unknown_book",
+        "title": "Unknown",
+        "last_update": "2026-11-09T18:49:40Z",
+        "markets": [
+          {"key": "h2h", "outcomes": [
+            {"name": "Bayern Munich", "price": 1.30},
+            {"name": "SC Freiburg", "price": 10.0},
+            {"name": "Draw", "price": 6.0}
+          ]}
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffeeddccbbaa9988",
+    "sport_key": "soccer_germany_bundesliga",
+    "sport_title": "Bundesliga - Germany",
+    "commence_time": "2026-11-14T17:30:00Z",
+    "home_team": "Borussia Dortmund",
+    "away_team": "RB Leipzig",
+    "bookmakers": [
+      {
+        "key": "pinnacle",
+        "title": "Pinnacle",
+        "last_update": "2026-11-09T18:50:12Z",
+        "markets": [
+          {"key": "h2h", "outcomes": [
+            {"name": "Borussia Dortmund", "price": 2.30},
+            {"name": "RB Leipzig", "price": 3.05},
+            {"name": "Draw", "price": 3.60}
+          ]}
+        ]
+      }
+    ]
+  }
+]

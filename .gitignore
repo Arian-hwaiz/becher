@@ -1,0 +1,27 @@
+# Abhängigkeiten und Builds
+node_modules/
+.next/
+dist/
+build/
+__pycache__/
+*.pyc
+.venv/
+
+# Geheimnisse
+.env
+.env.*
+!.env.example
+
+# Große Rohdaten
+data/raw/
+*.parquet
+*.csv.gz
+
+# System
+.DS_Store
+Thumbs.db
+
+# Lokale Entwicklung
+.venv/
+.pytest_cache/
+*.egg-info/

@@ -1,0 +1,22 @@
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: becher-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: becher
+      POSTGRES_PASSWORD: becher
+      POSTGRES_DB: becher
+    ports:
+      - "5432:5432"
+    volumes:
+      - becher-pgdata:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U becher -d becher"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  becher-pgdata:

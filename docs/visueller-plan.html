@@ -1,0 +1,238 @@
+<title>Becher Gesamtplan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600&display=swap">
+<style>
+/* Layout: eine Spalte, Abschnitte als Boards; Zeitachse und Flussdiagramm als Inline-SVG. Dunkelgrün als Akzent (Rasen, Wettschein), kühle Neutrale. */
+:root{
+  --bg:#f6f7f4; --surface:#ffffff; --fg:#1b1f1a; --muted:#5d665c; --line:#d7dcd3;
+  --accent:#1f6f4a; --accent-soft:#e2efe7; --code:#3b4a9a; --ai:#8a4fb5; --ai-soft:#f0e7f7;
+  --warn:#b7791f; --warn-soft:#fbf1dc; --good:#1f6f4a;
+  --display:"Fraunces",Georgia,serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131613; --surface:#1c201c; --fg:#e8ebe6; --muted:#9aa398; --line:#2f362f;
+  --accent:#5fbf8e; --accent-soft:#1d3328; --code:#8ea0ec; --ai:#c39aea; --ai-soft:#2b2235;
+  --warn:#e0a94a; --warn-soft:#352a16; --good:#5fbf8e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131613; --surface:#1c201c; --fg:#e8ebe6; --muted:#9aa398; --line:#2f362f;
+  --accent:#5fbf8e; --accent-soft:#1d3328; --code:#8ea0ec; --ai:#c39aea; --ai-soft:#2b2235;
+  --warn:#e0a94a; --warn-soft:#352a16; --good:#5fbf8e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:1040px;margin:0 auto;padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header h1{font-family:var(--display);font-weight:600;font-size:clamp(28px,4.5vw,42px);margin:0 0 6px;text-wrap:balance;letter-spacing:-.01em}
+header p{color:var(--muted);margin:0;max-width:62ch}
+.meta{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px}
+section{margin-top:44px}
+h2{font-family:var(--display);font-weight:600;font-size:24px;margin:0 0 4px;text-wrap:balance}
+.lead{color:var(--muted);margin:0 0 16px;max-width:70ch}
+.board{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+svg{display:block;max-width:100%;height:auto}
+svg text{font-family:var(--body);fill:var(--fg)}
+.lbl{text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--muted);font-weight:600}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.card{border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0;background:var(--surface)}
+.card h3{margin:0 0 6px;font-size:15px;font-weight:600}
+.card p,.card li{margin:0;color:var(--muted);font-size:14px}
+.card ul{margin:6px 0 0;padding-left:18px}
+.tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);margin-bottom:8px}
+.tag.code{color:var(--code);border-color:var(--code)}
+.tag.ai{color:var(--ai);border-color:var(--ai)}
+.phase{display:grid;grid-template-columns:72px 1fr;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.phase:first-of-type{border-top:0;padding-top:0}
+.phase .n{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:3px}
+.phase h3{margin:0;font-size:15px;font-weight:600}
+.phase p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.gate{margin-top:8px;font-size:13px;display:inline-block;background:var(--accent-soft);color:var(--accent);padding:3px 10px;border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+td.num{text-align:right;font-family:var(--mono);white-space:nowrap}
+.tbl{overflow-x:auto}
+.bar{height:10px;border-radius:5px;background:var(--accent-soft);position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:5px}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+footer{margin-top:48px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:no-preference){.card{transition:border-color .2s}.card:hover{border-color:var(--accent)}}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="lbl">Projekt Becher · privater Kern</div>
+  <h1>Vom Buchmacher-Feed zur eigenen Kante</h1>
+  <p>Der Gesamtplan auf einer Seite: wie die Daten fließen, in welchen Phasen gebaut wird, was Code und was KI übernimmt, wo der Profit herkommt und was es kostet.</p>
+  <div class="meta">Stand 09.11.2026 · Zahlen sind Schätzungen, keine Angebote · Details in docs/konzept/01 bis 05</div>
+</header>
+
+<!-- 1. Datenfluss -->
+<section>
+  <h2>1 · So fließen die Daten</h2>
+  <p class="lead">Sieben Stufen von der Quote beim Buchmacher bis zur Nachricht auf deinem Handy. Grün ist der Rechenkern, lila die KI-Schicht. Jede Quote trägt Quelle und Zeitstempel bis zum Ende mit.</p>
+  <div class="board" style="overflow-x:auto">
+  <svg viewBox="0 0 980 420" role="img" aria-label="Datenfluss von den Quellen über Collector, Normalisierung, Speicher, Rechenkern und KI bis zur Ausgabe">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+    <!-- row 1: sources -->
+    <g font-size="13">
+      <rect x="20" y="20" width="200" height="60" rx="8" fill="none" stroke="var(--line)"/>
+      <text x="120" y="45" text-anchor="middle" font-weight="600">Odds-API</text>
+      <text x="120" y="65" text-anchor="middle" fill="var(--muted)" font-size="12">gekaufter Feed, Start</text>
+      <rect x="250" y="20" width="200" height="60" rx="8" fill="none" stroke="var(--line)"/>
+      <text x="350" y="45" text-anchor="middle" font-weight="600">Betfair Exchange</text>
+      <text x="350" y="65" text-anchor="middle" fill="var(--muted)" font-size="12">scharfe Referenz, Stream</text>
+      <rect x="480" y="20" width="200" height="60" rx="8" fill="none" stroke="var(--line)"/>
+      <text x="580" y="45" text-anchor="middle" font-weight="600">Eigene Collector</text>
+      <text x="580" y="65" text-anchor="middle" fill="var(--muted)" font-size="12">2–3 Buchmacher, JSON/WebSocket</text>
+      <rect x="710" y="20" width="250" height="60" rx="8" fill="none" stroke="var(--line)" stroke-dasharray="4 3"/>
+      <text x="835" y="45" text-anchor="middle" font-weight="600">Aufstellungen, News</text>
+      <text x="835" y="65" text-anchor="middle" fill="var(--muted)" font-size="12">später, großer Hebel bei Fußball</text>
+    </g>
+    <g stroke="var(--muted)" stroke-width="1.2" fill="none" marker-end="url(#ar)">
+      <path d="M120 80V118"/><path d="M350 80V118"/><path d="M580 80V118"/><path d="M835 80V118"/>
+    </g>
+    <!-- row 2: normalisierung -->
+    <rect x="20" y="120" width="940" height="56" rx="8" fill="none" stroke="var(--line)"/>
+    <text x="490" y="143" text-anchor="middle" font-size="13" font-weight="600">Normalisierung</text>
+    <text x="490" y="163" text-anchor="middle" font-size="12" fill="var(--muted)">Teams und Ligen zuordnen (Aliase + rapidfuzz, KI für schwere Fälle) · Märkte vereinheitlichen · Void-Regeln · Ausreißer raus</text>
+    <g stroke="var(--muted)" stroke-width="1.2" fill="none" marker-end="url(#ar)"><path d="M490 176V214"/></g>
+    <!-- row 3: speicher -->
+    <rect x="20" y="216" width="940" height="56" rx="8" fill="none" stroke="var(--line)"/>
+    <text x="490" y="239" text-anchor="middle" font-size="13" font-weight="600">Speicher: PostgreSQL + TimescaleDB</text>
+    <text x="490" y="259" text-anchor="middle" font-size="12" fill="var(--muted)">odds_snapshots (Zeitreihe) · events · markets · closing_odds · bets · opportunities</text>
+    <g stroke="var(--muted)" stroke-width="1.2" fill="none" marker-end="url(#ar)"><path d="M250 272V310"/><path d="M730 272V310"/></g>
+    <!-- row 4: engine + ai -->
+    <rect x="20" y="312" width="460" height="64" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+    <text x="250" y="336" text-anchor="middle" font-size="13" font-weight="600">Rechenkern (Code)</text>
+    <text x="250" y="356" text-anchor="middle" font-size="12" fill="var(--muted)">Devig · effektive Quote nach Steuer · EV · Surebets · Kelly · CLV</text>
+    <rect x="500" y="312" width="460" height="64" rx="8" fill="var(--ai-soft)" stroke="var(--ai)" stroke-width="1.5"/>
+    <text x="730" y="336" text-anchor="middle" font-size="13" font-weight="600">KI-Schicht (Claude-API)</text>
+    <text x="730" y="356" text-anchor="middle" font-size="12" fill="var(--muted)">Fragen beantworten · Tagesbericht · Matching-Hilfe · Ausreißer erklären</text>
+    <g stroke="var(--muted)" stroke-width="1.2" fill="none" marker-end="url(#ar)"><path d="M480 344H498"/></g>
+    <!-- row 5: output -->
+    <g stroke="var(--muted)" stroke-width="1.2" fill="none" marker-end="url(#ar)"><path d="M250 376V398"/><path d="M730 376V398"/></g>
+    <text x="250" y="414" text-anchor="middle" font-size="12" fill="var(--muted)">Telegram-Alarme · Streamlit-Dashboard</text>
+    <text x="730" y="414" text-anchor="middle" font-size="12" fill="var(--muted)">Telegram-Chat · Morgenbericht</text>
+  </svg>
+  </div>
+</section>
+
+<!-- 2. Phasen -->
+<section>
+  <h2>2 · Bauplan in sechs Phasen, etwa 14 Wochen</h2>
+  <p class="lead">Jede Phase hat ein Ziel, an dem du erkennst, dass sie fertig ist. Die Balken zeigen die Dauer, die Raute das Gate.</p>
+  <div class="board" style="overflow-x:auto">
+  <svg viewBox="0 0 980 300" role="img" aria-label="Zeitachse der sechs Phasen über 14 Wochen">
+    <!-- axis: week 0 at x=190, week 14 at x=950 -> 54.3px/week -->
+    <g font-size="11" fill="var(--muted)">
+      <line x1="190" y1="30" x2="950" y2="30" stroke="var(--line)"/>
+      <text x="190" y="20" text-anchor="middle" fill="var(--muted)">W0</text>
+      <text x="298.6" y="20" text-anchor="middle" fill="var(--muted)">W2</text>
+      <text x="407.1" y="20" text-anchor="middle" fill="var(--muted)">W4</text>
+      <text x="515.7" y="20" text-anchor="middle" fill="var(--muted)">W6</text>
+      <text x="624.3" y="20" text-anchor="middle" fill="var(--muted)">W8</text>
+      <text x="732.9" y="20" text-anchor="middle" fill="var(--muted)">W10</text>
+      <text x="841.4" y="20" text-anchor="middle" fill="var(--muted)">W12</text>
+      <text x="950" y="20" text-anchor="middle" fill="var(--muted)">W14</text>
+      <g stroke="var(--line)" stroke-dasharray="2 4"><line x1="298.6" y1="30" x2="298.6" y2="290"/><line x1="407.1" y1="30" x2="407.1" y2="290"/><line x1="515.7" y1="30" x2="515.7" y2="290"/><line x1="624.3" y1="30" x2="624.3" y2="290"/><line x1="732.9" y1="30" x2="732.9" y2="290"/><line x1="841.4" y1="30" x2="841.4" y2="290"/></g>
+    </g>
+    <g font-size="13">
+      <text x="20" y="64">1 Fundament</text><rect x="190" y="52" width="108.6" height="16" rx="8" fill="var(--accent)"/><path d="M298.6 52l8 8-8 8-8-8z" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/><text x="312" y="64" font-size="11" fill="var(--muted)">10+ Buchmacher alle 5 Min. in der DB</text>
+      <text x="20" y="106">2 Matching</text><rect x="298.6" y="94" width="108.5" height="16" rx="8" fill="var(--accent)"/><path d="M407.1 94l8 8-8 8-8-8z" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/><text x="421" y="106" font-size="11" fill="var(--muted)">über 98 % Events richtig zugeordnet</text>
+      <text x="20" y="148">3 Rechenkern</text><rect x="407.1" y="136" width="108.6" height="16" rx="8" fill="var(--accent)"/><path d="M515.7 136l8 8-8 8-8-8z" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/><text x="530" y="148" font-size="11" fill="var(--muted)">Alarme stimmen, Zahlen nachgeprüft</text>
+      <text x="20" y="190">4 Collector</text><rect x="515.7" y="178" width="108.6" height="16" rx="8" fill="var(--accent)"/><path d="M624.3 178l8 8-8 8-8-8z" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/><text x="638" y="190" font-size="11" fill="var(--muted)">eine Woche ohne Eingriff</text>
+      <text x="20" y="232">5 Tracking + CLV</text><rect x="624.3" y="220" width="108.6" height="16" rx="8" fill="var(--accent)"/><path d="M732.9 220l8 8-8 8-8-8z" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/><text x="747" y="232" font-size="11" fill="var(--muted)">jede Wette bekommt ihren CLV</text>
+      <text x="20" y="274">6 KI-Schicht</text><rect x="732.9" y="262" width="217.1" height="16" rx="8" fill="var(--ai)"/><path d="M950 262l8 8-8 8-8-8z" fill="var(--surface)" stroke="var(--ai)" stroke-width="1.5"/>
+    </g>
+  </svg>
+  </div>
+  <div class="board" style="margin-top:14px">
+    <div class="phase"><div class="n">W 1–2</div><div><h3>Fundament</h3><p>Docker Compose mit PostgreSQL/TimescaleDB, Datenmodell, erste Odds-API für Fußball Prematch, Betfair-Entwicklerkonto.</p><span class="gate">Gate: alle 5 Minuten neue Quoten von mindestens 10 Buchmachern</span></div></div>
+    <div class="phase"><div class="n">W 3–4</div><div><h3>Normalisierung und Matching</h3><p>Alias-Tabelle, rapidfuzz plus Startzeit, unklare Fälle an die KI, Märkte vereinheitlichen inklusive Viertel-Linien.</p><span class="gate">Gate: über 98 % automatisch richtig zugeordnet</span></div></div>
+    <div class="phase"><div class="n">W 5–6</div><div><h3>Rechenkern</h3><p>Devig (multiplikativ, Power, Shin), effektive Quote nach Steuer, EV, Surebets mit Einsatzverteilung, Kelly-Bruchteil, Telegram-Alarm.</p><span class="gate">Gate: jede Zahl gegen einen Online-Rechner geprüft</span></div></div>
+    <div class="phase"><div class="n">W 7–8</div><div><h3>Eigene Collector</h3><p>2 bis 3 Buchmacher, die die API nicht liefert. Überwachung mit Alarm bei Stillstand.</p><span class="gate">Gate: eine Woche ohne Eingriff</span></div></div>
+    <div class="phase"><div class="n">W 9–10</div><div><h3>Tracking und CLV</h3><p>Wetten per Telegram erfassen, Schlussquote automatisch speichern, Dashboard mit ROI und CLV nach Buchmacher, Markt, Methode.</p><span class="gate">Gate: jede Wette hat ihren CLV</span></div></div>
+    <div class="phase"><div class="n">W 11–14</div><div><h3>KI-Schicht</h3><p>Assistent mit Datenbank-Zugriff (nur lesend), Chat über Telegram, Tagesbericht am Morgen, Matching-Hilfe ausbauen.</p><span class="gate">Gate: Fragen per Chat beantwortet, Bericht kommt täglich</span></div></div>
+  </div>
+</section>
+
+<!-- 3. Code vs KI -->
+<section>
+  <h2>3 · Was Code rechnet und was die KI macht</h2>
+  <p class="lead">Die Mathematik bleibt bei normalem Code: exakt, schnell, kostenlos pro Rechnung. Die KI übernimmt, was Code schlecht kann: Sprache, Zuordnung, Erklärung.</p>
+  <div class="grid g2">
+    <div class="card"><span class="tag code">Code · Python</span><h3>Rechenkern</h3><ul><li>Devig in drei Methoden, Referenz aus Pinnacle und Betfair</li><li>Effektive Quote nach Wettsteuer und Kommission</li><li>EV mit konservativer Untergrenze</li><li>Surebets mit Einsatzverteilung und Lebensdauer</li><li>Fractional Kelly über alle Konten</li><li>CLV gegen die Schlussquote</li></ul></div>
+    <div class="card"><span class="tag ai">KI · Claude-API</span><h3>Assistent</h3><ul><li>Teamnamen zuordnen, die der Alias-Abgleich nicht kennt</li><li>Fragen in normaler Sprache gegen die Datenbank</li><li>Tagesbericht: Chancen, CLV, Linienbewegungen</li><li>Ausreißer einordnen (Fehlerquote, Verletzung, Steam)</li><li>Vorschläge bewerten am CLV, nicht am Gewinn</li></ul></div>
+    <div class="card"><span class="tag">später · ML</span><h3>Eigene Modelle (ab 3–6 Monaten Historie)</h3><ul><li>Schlussquote vorhersagen als zweite faire Quote</li><li>Lebensdauer von Kanten schätzen</li><li>Nicht: Spielausgänge direkt vorhersagen</li></ul></div>
+    <div class="card"><span class="tag">Infrastruktur</span><h3>Betrieb</h3><ul><li>Entwicklung auf dem PC, Dauerbetrieb auf kleinem Hetzner-Server</li><li>Docker Compose, APScheduler, Streamlit, Telegram-Bot</li><li>Schlüssel nur in .env, nie im Git</li></ul></div>
+  </div>
+</section>
+
+<!-- 4. Profit-Hebel -->
+<section>
+  <h2>4 · Wo der Profit herkommt</h2>
+  <p class="lead">Keine einzelne Formel, sondern viele kleine Genauigkeitsgewinne. Die Balken zeigen meine Einschätzung der Wirkung, die Spalte rechts den Aufwand. Realistisch nach Kosten: 2 bis 5 % Rendite auf den Umsatz, solange die Konten offen sind.</p>
+  <div class="board tbl">
+  <table>
+    <thead><tr><th>Hebel</th><th style="width:34%">Wirkung</th><th>Aufwand</th><th>Was genau</th></tr></thead>
+    <tbody>
+      <tr><td>Steuer und Kommission einrechnen</td><td><div class="bar"><i style="width:100%"></i></div></td><td>gering</td><td>5,3 % Wettsteuer macht aus 2,00 etwa 1,95. Mit effektiver Quote rechnen.</td></tr>
+      <tr><td>CLV messen und danach auswählen</td><td><div class="bar"><i style="width:100%"></i></div></td><td>mittel</td><td>Zeigt nach 300–500 Wetten, wo die Kante echt ist.</td></tr>
+      <tr><td>Fractional Kelly, konservativer EV</td><td><div class="bar"><i style="width:85%"></i></div></td><td>gering</td><td>Verhindert Ruin, Einsätze runden, Bankroll über alle Konten.</td></tr>
+      <tr><td>Konten am Leben halten</td><td><div class="bar"><i style="width:85%"></i></div></td><td>mittel</td><td>Risiko-Score pro Konto, Tarnwetten, Boosts nutzen.</td></tr>
+      <tr><td>Aufstellungs-Alarme</td><td><div class="bar"><i style="width:80%"></i></div></td><td>mittel</td><td>Softs hängen 5–15 Minuten hinterher.</td></tr>
+      <tr><td>Bonus-EV-Rechner</td><td><div class="bar"><i style="width:70%"></i></div></td><td>gering</td><td>Für Einsteiger oft der profitabelste Teil.</td></tr>
+      <tr><td>Mehrere Devig-Methoden, Konsens-Referenz</td><td><div class="bar"><i style="width:65%"></i></div></td><td>mittel</td><td>Power/Shin bei Außenseitern, Gewichte am CLV lernen.</td></tr>
+      <tr><td>Frische- und Bewegungsfilter</td><td><div class="bar"><i style="width:50%"></i></div></td><td>gering</td><td>Alte Referenz ist Risiko; Steam-Richtung beachten.</td></tr>
+      <tr><td>ML-Modelle</td><td><div class="bar"><i style="width:35%"></i></div></td><td>hoch</td><td>Erst mit Historie, Wirkung unsicher.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="grid g3" style="margin-top:14px">
+    <div class="card"><h3>Märkte</h3><p>Nebenmärkte, untere Ligen, Asian-Handicap-Viertellinien. Dort sind Softs langsam, aber die Limits niedriger.</p></div>
+    <div class="card"><h3>Timing</h3><p>Kurz nach Linien-Eröffnung und in den letzten 1–2 Stunden vor Anpfiff. Dazwischen wenig zu holen.</p></div>
+    <div class="card"><h3>Knappe Ressource</h3><p>Nicht die Kanten sind knapp, sondern die Konten. Alles, was ihre Lebensdauer verlängert, ist Profit.</p></div>
+  </div>
+</section>
+
+<!-- 5. Kosten -->
+<section>
+  <h2>5 · Was es kostet</h2>
+  <p class="lead">Privat ist der Kern günstig. Die Plattform-Variante aus dem ersten Konzept ist zum Vergleich daneben gestellt.</p>
+  <div class="grid g2">
+    <div class="card"><span class="tag">privater Kern</span><h3>Laufend pro Monat</h3>
+      <div class="tbl"><table><tbody>
+        <tr><td>Server (oder eigener PC)</td><td class="num">0–20 €</td></tr>
+        <tr><td>Odds-API</td><td class="num">0–100 €</td></tr>
+        <tr><td>Claude-API</td><td class="num">5–30 €</td></tr>
+        <tr><td>Proxies (ab eigenen Collectorn)</td><td class="num">0–50 €</td></tr>
+        <tr><th>Summe</th><td class="num"><strong>ca. 30–150 €</strong></td></tr>
+      </tbody></table></div>
+      <p class="note">Einmalig: Betfair-Live-Key ca. 350 € nur bei Echtzeit-Daten, plus eigenes Wettkapital.</p></div>
+    <div class="card"><span class="tag">zum Vergleich · Plattform</span><h3>Erstes Jahr</h3>
+      <div class="tbl"><table><tbody>
+        <tr><td>Selbst gebaut</td><td class="num">38.000–89.000 €</td></tr>
+        <tr><td>Mit Freelancern</td><td class="num">130.000–230.000 €</td></tr>
+        <tr><td>Laufend pro Monat (Phase 3)</td><td class="num">4.400–10.500 €</td></tr>
+        <tr><td>Break-even</td><td class="num">60–140 zahlende Nutzer</td></tr>
+      </tbody></table></div>
+      <p class="note">Größte Posten dort: Quoten-Daten und Marketing, nicht die Server.</p></div>
+  </div>
+</section>
+
+<!-- 6. Repo -->
+<section>
+  <h2>6 · So ist das Repo aufgebaut</h2>
+  <p class="lead">Ordner <code style="font-family:var(--mono)">C:\Users\Arian\Documents\GitHub\becher</code>. Alles landet dort: Konzepte, Daten, KI, Code.</p>
+  <div class="grid g3">
+    <div class="card"><h3>docs/</h3><p>konzept/01 bis 05, diagramme/, recherche/</p></div>
+    <div class="card"><h3>collectors/</h3><p>Ein Modul pro Quelle: odds_api.py, betfair.py, je Buchmacher</p></div>
+    <div class="card"><h3>engine/</h3><p>devig.py, value.py, arbs.py, kelly.py, Tests</p></div>
+    <div class="card"><h3>ai/</h3><p>Assistent, Prompts, Werkzeuge, später ML-Modelle</p></div>
+    <div class="card"><h3>data/</h3><p>Alias-Listen, Markt-Mappings; Rohdaten nicht ins Git</p></div>
+    <div class="card"><h3>infra/ · website/</h3><p>docker-compose, Schema, Backups · später Streamlit-Dashboard</p></div>
+  </div>
+</section>
+
+<footer>Grenzen: Varianz ist brutal, Verlustphasen über Monate sind auch mit echter Kante normal. Scraping kann gegen AGB verstoßen, Konten werden limitiert. Keine automatische Platzierung. Das ist Analyse von Mathematik und Marktmechanik, keine Finanzberatung.</footer>
+</div>
