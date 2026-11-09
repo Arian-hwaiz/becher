@@ -16,7 +16,8 @@ Odds-Scanner für Valuebets und Surebets: ein besserer Nachbau von Betburger, mi
 | `scripts/` | Hilfsskripte: Schema einspielen, Status |
 | `tests/` | Tests (pytest) |
 | `engine/` | Rechenkern: `surebet.py` (generischer Surebet/Middle-Löser, Steuer, Kommission), später Devig und Valuebets |
-| `website/` | Web-App und Marketing-Seite |
+| `dashboard/` | Streamlit-Dashboard: Scanner-Feed wie bei Betburger, Überblick, Quoten je Event, Collector-Läufe |
+| `website/` | später: öffentliche Web-App (nicht Teil des privaten Kerns) |
 | `infra/` | Server, Docker, Monitoring |
 
 ## Schnellstart (Phase 1)
@@ -44,6 +45,10 @@ python -m collectors.run
 
 # Tests (ohne Datenbank)
 pytest -q
+
+# Dashboard (Scanner wie bei Betburger): http://localhost:8501
+pip install -e ".[dashboard]"
+streamlit run dashboard/app.py
 ```
 
 Läuft die Datenbank schon und ist das Schema älter, spielt `python scripts/init_db.py` es erneut ein (idempotent).
@@ -58,9 +63,13 @@ Läuft die Datenbank schon und ist das Schema älter, spielt `python scripts/ini
 - `engine/valuebet.py`: EV nach Steuer/Kommission, konservativer EV mit Unsicherheitsband (wächst mit Referenz-Alter und dünnem Markt), Viertel-Kelly.
 - `engine/scan.py` + `python scripts/scan.py`: sucht in den jüngsten Quoten aller kommenden Events Valuebets (gegen scharfe Referenzen/Börse) und Surebets (beste effektive Quote je Ausgang) und schreibt Treffer in `opportunities`. Optionen: `--method`, `--min-ev`, `--max-age`, `--dry-run`.
 
+**Dashboard:** `streamlit run dashboard/app.py` öffnet die Scanner-Ansicht: links Filter (Art, Zeitraum, Mindest-Prozent, Alter, Sportarten, Buchmacher, Sortierung, Gesamteinsatz, Auto-Refresh), in der Mitte der Treffer-Feed (Prozent, Sport, Alter, Spiel, Markt, Buchmacher, Quote, faire Quote, Referenz), rechts der Einsatzrechner (Surebet-Einsätze nach Steuer/Kommission, Gewinn; bei Valuebets effektive Quote, erwarteter Gewinn, Viertel-Kelly). Weitere Seiten: Überblick, Quoten je Event (Tabelle mit Bestquoten und Verlauf), Collector-Läufe.
+
 **Datenbank-Tabellen:** `bookmakers` (mit Steuer und Kommission je Anbieter), `sports`, `leagues`, `teams`, `team_aliases`, `events`, `markets`, `odds_snapshots`, `closing_odds`, `opportunities`, `bets`, `collector_runs`. Schema: `infra/schema.sql`.
 
 ## Wichtigste Dokumente
+
+- **[Handbuch: das komplette Projekt erklärt](docs/HANDBUCH.md)**
 
 - [Betburger-Analyse und Konzept](docs/konzept/01-betburger-analyse-und-konzept.md)
 - [Kostenkonzept](docs/konzept/02-kostenkonzept.md)

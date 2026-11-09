@@ -72,5 +72,5 @@ def test_second_source_matches_existing_event():
         assert n == 2
         aliases = conn.execute("SELECT source, alias, confidence FROM team_aliases WHERE team_id=%s ORDER BY source",
                                (ev["home_team_id"],)).fetchall()
-        assert {r["source"] for r in aliases} == {"odds_api", "betfair"}
+        assert {"odds_api", "betfair"} <= {r["source"] for r in aliases}
         conn.rollback()

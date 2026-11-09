@@ -1,4 +1,4 @@
-.PHONY: setup db-up db-down init collect-once collect status scan test
+.PHONY: setup db-up db-down init collect-once collect status scan dashboard test
 
 setup:            ## Virtuelle Umgebung und Abhängigkeiten
 	python -m venv .venv && . .venv/bin/activate && pip install -e ".[dev]"
@@ -23,6 +23,9 @@ status:           ## Was ist in der Datenbank?
 
 scan:             ## Valuebets und Surebets aus den gespeicherten Quoten suchen
 	python scripts/scan.py
+
+dashboard:        ## Dashboard im Browser (http://localhost:8501)
+	streamlit run dashboard/app.py
 
 test:
 	pytest -q
