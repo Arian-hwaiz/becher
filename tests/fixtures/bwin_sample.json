@@ -1,0 +1,725 @@
+{
+ "widgets": [
+  {
+   "payload": {
+    "items": [
+     {
+      "activeChildren": [
+       {
+        "payload": {
+         "fixtures": [
+          {
+           "id": "2:7906958",
+           "name": {
+            "value": "FC Bayern München - 1. FC Köln"
+           },
+           "stage": "PreMatch",
+           "isOpenForBetting": true,
+           "startDate": "2026-11-20T19:30:00Z",
+           "participants": [
+            {
+             "id": 39861802,
+             "name": {
+              "value": "FC Bayern München"
+             },
+             "properties": {
+              "type": "HomeTeam"
+             }
+            },
+            {
+             "id": 39861803,
+             "name": {
+              "value": "1. FC Köln"
+             },
+             "properties": {
+              "type": "AwayTeam"
+             }
+            }
+           ],
+           "optionMarkets": [
+            {
+             "id": 207432976,
+             "name": {
+              "value": "Gesamtanzahl Tore"
+             },
+             "attr": "3,5",
+             "isMain": false,
+             "options": [
+              {
+               "id": 804228611,
+               "status": "Visible",
+               "name": {
+                "value": "Mehr als 3,5"
+               },
+               "price": {
+                "odds": 1.51
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Over"
+                ]
+               }
+              },
+              {
+               "id": 804228612,
+               "status": "Visible",
+               "name": {
+                "value": "Weniger als 3,5"
+               },
+               "price": {
+                "odds": 2.5
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Under"
+                ]
+               }
+              }
+             ]
+            },
+            {
+             "id": 207432978,
+             "name": {
+              "value": "Gesamtanzahl Tore"
+             },
+             "attr": "2,5",
+             "isMain": false,
+             "options": [
+              {
+               "id": 804228615,
+               "status": "Visible",
+               "name": {
+                "value": "Mehr als 2,5"
+               },
+               "price": {
+                "odds": 1.2
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Over"
+                ]
+               }
+              },
+              {
+               "id": 804228616,
+               "status": "Visible",
+               "name": {
+                "value": "Weniger als 2,5"
+               },
+               "price": {
+                "odds": 4.5
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Under"
+                ]
+               }
+              }
+             ]
+            },
+            {
+             "id": 207324470,
+             "name": {
+              "value": "Spielresultat"
+             },
+             "attr": null,
+             "isMain": true,
+             "options": [
+              {
+               "id": 803454041,
+               "status": "Visible",
+               "name": {
+                "value": "FC Bayern München"
+               },
+               "sourceName": {
+                "value": "1"
+               },
+               "price": {
+                "odds": 1.11
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max"
+                ],
+                "fixtureParticipant": 39861802
+               }
+              },
+              {
+               "id": 803454042,
+               "status": "Visible",
+               "name": {
+                "value": "X"
+               },
+               "price": {
+                "odds": 11.0
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Draw"
+                ]
+               }
+              },
+              {
+               "id": 803454043,
+               "status": "Visible",
+               "name": {
+                "value": "1. FC Köln"
+               },
+               "sourceName": {
+                "value": "2"
+               },
+               "price": {
+                "odds": 19.5
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max"
+                ],
+                "fixtureParticipant": 39861803
+               }
+              }
+             ]
+            },
+            {
+             "id": 207324475,
+             "name": {
+              "value": "Doppelte Chance"
+             },
+             "attr": null,
+             "isMain": false,
+             "options": [
+              {
+               "id": 803454100,
+               "status": "Visible",
+               "name": {
+                "value": "FC Bayern München oder X"
+               },
+               "price": {
+                "odds": 1.02
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max",
+                 "Draw"
+                ],
+                "fixtureParticipant": 39861802
+               }
+              },
+              {
+               "id": 803454101,
+               "status": "Visible",
+               "name": {
+                "value": "X oder 1. FC Köln"
+               },
+               "price": {
+                "odds": 6.75
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max",
+                 "Draw"
+                ],
+                "fixtureParticipant": 39861803
+               }
+              },
+              {
+               "id": 803454102,
+               "status": "Visible",
+               "name": {
+                "value": "FC Bayern München oder 1. FC Köln"
+               },
+               "price": {
+                "odds": 1.05
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max",
+                 "Max"
+                ],
+                "fixtureParticipant": 39861803
+               }
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "id": "2:7907847",
+           "name": {
+            "value": "Union Berlin - RB Leipzig"
+           },
+           "stage": "PreMatch",
+           "isOpenForBetting": true,
+           "startDate": "2026-11-21T14:30:00Z",
+           "participants": [
+            {
+             "id": 39905912,
+             "name": {
+              "value": "Union Berlin"
+             },
+             "properties": {
+              "type": "HomeTeam"
+             }
+            },
+            {
+             "id": 39905913,
+             "name": {
+              "value": "RB Leipzig"
+             },
+             "properties": {
+              "type": "AwayTeam"
+             }
+            }
+           ],
+           "optionMarkets": [
+            {
+             "id": 207432575,
+             "name": {
+              "value": "Gesamtanzahl Tore"
+             },
+             "attr": "3,5",
+             "isMain": false,
+             "options": [
+              {
+               "id": 804227479,
+               "status": "Visible",
+               "name": {
+                "value": "Mehr als 3,5"
+               },
+               "price": {
+                "odds": 2.1
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Over"
+                ]
+               }
+              },
+              {
+               "id": 804227480,
+               "status": "Visible",
+               "name": {
+                "value": "Weniger als 3,5"
+               },
+               "price": {
+                "odds": 1.7
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Under"
+                ]
+               }
+              }
+             ]
+            },
+            {
+             "id": 207432576,
+             "name": {
+              "value": "Gesamtanzahl Tore"
+             },
+             "attr": "2,5",
+             "isMain": false,
+             "options": [
+              {
+               "id": 804227481,
+               "status": "Visible",
+               "name": {
+                "value": "Mehr als 2,5"
+               },
+               "price": {
+                "odds": 1.46
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Over"
+                ]
+               }
+              },
+              {
+               "id": 804227482,
+               "status": "Visible",
+               "name": {
+                "value": "Weniger als 2,5"
+               },
+               "price": {
+                "odds": 2.7
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Under"
+                ]
+               }
+              }
+             ]
+            },
+            {
+             "id": 207400041,
+             "name": {
+              "value": "Spielresultat"
+             },
+             "attr": null,
+             "isMain": true,
+             "options": [
+              {
+               "id": 803990627,
+               "status": "Visible",
+               "name": {
+                "value": "Union Berlin"
+               },
+               "sourceName": {
+                "value": "1"
+               },
+               "price": {
+                "odds": 5.0
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max"
+                ],
+                "fixtureParticipant": 39905912
+               }
+              },
+              {
+               "id": 803990628,
+               "status": "Visible",
+               "name": {
+                "value": "X"
+               },
+               "price": {
+                "odds": 4.4
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Draw"
+                ]
+               }
+              },
+              {
+               "id": 803990629,
+               "status": "Visible",
+               "name": {
+                "value": "RB Leipzig"
+               },
+               "sourceName": {
+                "value": "2"
+               },
+               "price": {
+                "odds": 1.58
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max"
+                ],
+                "fixtureParticipant": 39905913
+               }
+              }
+             ]
+            },
+            {
+             "id": 207400046,
+             "name": {
+              "value": "Doppelte Chance"
+             },
+             "attr": null,
+             "isMain": false,
+             "options": [
+              {
+               "id": 803990686,
+               "status": "Visible",
+               "name": {
+                "value": "Union Berlin oder X"
+               },
+               "price": {
+                "odds": 2.3
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max",
+                 "Draw"
+                ],
+                "fixtureParticipant": 39905912
+               }
+              },
+              {
+               "id": 803990687,
+               "status": "Visible",
+               "name": {
+                "value": "X oder RB Leipzig"
+               },
+               "price": {
+                "odds": 1.17
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max",
+                 "Draw"
+                ],
+                "fixtureParticipant": 39905913
+               }
+              },
+              {
+               "id": 803990688,
+               "status": "Visible",
+               "name": {
+                "value": "Union Berlin oder RB Leipzig"
+               },
+               "price": {
+                "odds": 1.2
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max",
+                 "Max"
+                ],
+                "fixtureParticipant": 39905913
+               }
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "id": "2:9999999",
+           "name": {
+            "value": "Union Berlin - RB Leipzig"
+           },
+           "stage": "Live",
+           "isOpenForBetting": true,
+           "startDate": "2026-11-21T14:30:00Z",
+           "participants": [
+            {
+             "id": 39905912,
+             "name": {
+              "value": "Union Berlin"
+             },
+             "properties": {
+              "type": "HomeTeam"
+             }
+            },
+            {
+             "id": 39905913,
+             "name": {
+              "value": "RB Leipzig"
+             },
+             "properties": {
+              "type": "AwayTeam"
+             }
+            }
+           ],
+           "optionMarkets": [
+            {
+             "id": 207432575,
+             "name": {
+              "value": "Gesamtanzahl Tore"
+             },
+             "attr": "3,5",
+             "isMain": false,
+             "options": [
+              {
+               "id": 804227479,
+               "status": "Visible",
+               "name": {
+                "value": "Mehr als 3,5"
+               },
+               "price": {
+                "odds": 2.1
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Over"
+                ]
+               }
+              },
+              {
+               "id": 804227480,
+               "status": "Visible",
+               "name": {
+                "value": "Weniger als 3,5"
+               },
+               "price": {
+                "odds": 1.7
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Under"
+                ]
+               }
+              }
+             ]
+            },
+            {
+             "id": 207432576,
+             "name": {
+              "value": "Gesamtanzahl Tore"
+             },
+             "attr": "2,5",
+             "isMain": false,
+             "options": [
+              {
+               "id": 804227481,
+               "status": "Visible",
+               "name": {
+                "value": "Mehr als 2,5"
+               },
+               "price": {
+                "odds": 1.46
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Over"
+                ]
+               }
+              },
+              {
+               "id": 804227482,
+               "status": "Visible",
+               "name": {
+                "value": "Weniger als 2,5"
+               },
+               "price": {
+                "odds": 2.7
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Under"
+                ]
+               }
+              }
+             ]
+            },
+            {
+             "id": 207400041,
+             "name": {
+              "value": "Spielresultat"
+             },
+             "attr": null,
+             "isMain": true,
+             "options": [
+              {
+               "id": 803990627,
+               "status": "Visible",
+               "name": {
+                "value": "Union Berlin"
+               },
+               "sourceName": {
+                "value": "1"
+               },
+               "price": {
+                "odds": 5.0
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max"
+                ],
+                "fixtureParticipant": 39905912
+               }
+              },
+              {
+               "id": 803990628,
+               "status": "Visible",
+               "name": {
+                "value": "X"
+               },
+               "price": {
+                "odds": 4.4
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Draw"
+                ]
+               }
+              },
+              {
+               "id": 803990629,
+               "status": "Visible",
+               "name": {
+                "value": "RB Leipzig"
+               },
+               "sourceName": {
+                "value": "2"
+               },
+               "price": {
+                "odds": 1.58
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max"
+                ],
+                "fixtureParticipant": 39905913
+               }
+              }
+             ]
+            },
+            {
+             "id": 207400046,
+             "name": {
+              "value": "Doppelte Chance"
+             },
+             "attr": null,
+             "isMain": false,
+             "options": [
+              {
+               "id": 803990686,
+               "status": "Visible",
+               "name": {
+                "value": "Union Berlin oder X"
+               },
+               "price": {
+                "odds": 2.3
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max",
+                 "Draw"
+                ],
+                "fixtureParticipant": 39905912
+               }
+              },
+              {
+               "id": 803990687,
+               "status": "Visible",
+               "name": {
+                "value": "X oder RB Leipzig"
+               },
+               "price": {
+                "odds": 1.17
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max",
+                 "Draw"
+                ],
+                "fixtureParticipant": 39905913
+               }
+              },
+              {
+               "id": 803990688,
+               "status": "Visible",
+               "name": {
+                "value": "Union Berlin oder RB Leipzig"
+               },
+               "price": {
+                "odds": 1.2
+               },
+               "parameters": {
+                "optionTypes": [
+                 "Max",
+                 "Max"
+                ],
+                "fixtureParticipant": 39905913
+               }
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

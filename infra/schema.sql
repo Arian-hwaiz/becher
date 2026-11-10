@@ -287,3 +287,17 @@ ON CONFLICT DO NOTHING;
 INSERT INTO bookmaker_source_keys (source, source_key, bookmaker_id)
 SELECT 'betfair', 'betfair_ex', id FROM bookmakers WHERE key = 'betfair_ex'
 ON CONFLICT DO NOTHING;
+
+-- Eigener Scraper bwin (collectors/bwin.py) schreibt unter source='bwin'
+INSERT INTO bookmaker_source_keys (source, source_key, bookmaker_id)
+SELECT 'bwin', 'bwin', id FROM bookmakers WHERE key = 'bwin'
+ON CONFLICT DO NOTHING;
+UPDATE bookmakers SET scraper_status = 'laeuft',
+  scraper_note = 'Playwright, liest das JSON der Ligaseite (widgetdata), h2h + totals, Direkt-Links'
+WHERE key = 'bwin' AND scraper_status IN ('offen', 'in_arbeit');
+UPDATE bookmakers SET scraper_status = 'blockiert',
+  scraper_note = 'Cloudflare blockt automatisierte Zugriffe (403), nicht umgangen'
+WHERE key = 'pinnacle' AND scraper_status IN ('offen', 'in_arbeit');
+UPDATE bookmakers SET scraper_status = 'blockiert',
+  scraper_note = 'Verbindung wird sofort abgebrochen (HTTP/2-Fehler, Bot-Filter), nicht umgangen'
+WHERE key = 'tipico' AND scraper_status IN ('offen', 'in_arbeit');

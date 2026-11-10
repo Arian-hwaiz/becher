@@ -17,7 +17,13 @@ class Settings(BaseSettings):
     odds_api_min_remaining: int = 20       # unter dieser Reserve keine Abfragen mehr (Credits je Monat)
 
     collect_interval_seconds: int = Field(default=14400, ge=30)
-    collectors: str = "odds_api"            # aktive Collector, kommagetrennt: odds_api, betfair
+    collectors: str = "odds_api"            # aktive Collector, kommagetrennt: odds_api, betfair, bwin, admiral
+
+    # Eigene Scraper (bwin, admiral): Ligen als Odds-API-Schlüssel, Pausen und Mindestabstand
+    scrape_leagues: str = "soccer_germany_bundesliga,soccer_germany_bundesliga2,soccer_epl"
+    scrape_interval_seconds: int = Field(default=120, ge=30)   # Mindestabstand zwischen zwei Läufen je Scraper
+    scrape_delay_seconds: float = Field(default=3.0, ge=1.0)   # Pause zwischen zwei Seitenaufrufen
+    scrape_headless: bool = True
 
     # Betfair Exchange (https://developer.betfair.com): App-Key plus Session-Token
     # oder Benutzername/Passwort für den interaktiven Login
@@ -38,6 +44,10 @@ class Settings(BaseSettings):
     @property
     def active_collectors(self) -> list[str]:
         return [c.strip() for c in self.collectors.split(",") if c.strip()]
+
+    @property
+    def scrape_league_list(self) -> list[str]:
+        return [s.strip() for s in self.scrape_leagues.split(",") if s.strip()]
 
     @property
     def sports(self) -> list[str]:
