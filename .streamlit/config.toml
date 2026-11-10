@@ -1,0 +1,7 @@
+# Streamlit-Einstellungen für das Becher-Dashboard.
+# "minimal" blendet den Deploy-Knopf und das Entwicklermenü oben rechts aus.
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false
