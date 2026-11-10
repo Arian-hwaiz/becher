@@ -57,14 +57,14 @@ SCRAPER_BOOKMAKER = {"bwin": "bwin", "admiral": "admiral", "interwetten": "inter
 
 
 def _mark_blocked(source: str, reason: str) -> None:
-    """Collector ausschalten und Buchmacher auf „blockiert“ setzen, damit der Dauerbetrieb nicht weiter anfragt."""
+    """Collector ausschalten, Buchmacher auf „blockiert“ und inaktiv setzen (aktiv bleiben nur Anbieter mit laufendem Scraper)."""
     try:
         with db.connect() as conn:
             conn.execute(
                 """INSERT INTO collector_settings (source, enabled, updated_at) VALUES (%s, FALSE, now())
                    ON CONFLICT (source) DO UPDATE SET enabled = FALSE, updated_at = now()""", (source,))
             if source in SCRAPER_BOOKMAKER:
-                conn.execute("UPDATE bookmakers SET scraper_status='blockiert', scraper_note=%s WHERE key=%s",
+                conn.execute("UPDATE bookmakers SET scraper_status='blockiert', is_active=FALSE, scraper_note=%s WHERE key=%s",
                              (f"automatisch gestoppt: {reason}"[:300], SCRAPER_BOOKMAKER[source]))
     except Exception:  # noqa: BLE001
         log.exception("%s: Blockade konnte nicht vermerkt werden", source)
