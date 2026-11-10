@@ -201,7 +201,19 @@ INSERT INTO bookmakers (key, name, country, kind, tax_rate, tax_mode, commission
   ('unibet',     'Unibet',     'DE', 'soft',     0.053, 'on_stake', 0),
   ('williamhill','William Hill','GB','soft',     0,     'none',     0),
   ('betway',     'Betway',     'GB', 'soft',     0,     'none',     0),
-  ('onexbet',    '1xBet',      'CY', 'soft',     0,     'none',     0)
+  ('onexbet',    '1xBet',      'CY', 'soft',     0,     'none',     0),
+  -- weitere Buchmacher, die die Odds-API für Region eu liefert (Steuer 5,3 % nur bei deutscher Lizenz)
+  ('winamax',    'Winamax',    'DE', 'soft',     0.053, 'on_stake', 0),
+  ('betclic',    'Betclic',    'FR', 'soft',     0,     'none',     0),
+  ('betsson',    'Betsson',    'MT', 'soft',     0,     'none',     0),
+  ('codere',     'Codere',     'IT', 'soft',     0,     'none',     0),
+  ('coolbet',    'Coolbet',    'EE', 'soft',     0,     'none',     0),
+  ('everygame',  'Everygame',  'CW', 'soft',     0,     'none',     0),
+  ('leovegas',   'LeoVegas',   'SE', 'soft',     0,     'none',     0),
+  ('marathonbet','Marathonbet','GB', 'soft',     0,     'none',     0),
+  ('nordicbet',  'NordicBet',  'MT', 'soft',     0,     'none',     0),
+  ('pmu',        'PMU',        'FR', 'soft',     0,     'none',     0),
+  ('sport888',   '888sport',   'GI', 'soft',     0,     'none',     0)
 ON CONFLICT (key) DO NOTHING;
 
 -- Zuordnung der Odds-API-Schlüssel zu unseren Buchmachern
@@ -209,7 +221,11 @@ INSERT INTO bookmaker_source_keys (source, source_key, bookmaker_id)
 SELECT 'odds_api', v.src, b.id FROM (VALUES
   ('pinnacle','pinnacle'), ('betfair_ex_eu','betfair_ex'), ('bet365','bet365'), ('tipico_de','tipico'),
   ('bwin','bwin'), ('betano','betano'), ('unibet_eu','unibet'), ('williamhill','williamhill'),
-  ('betway','betway'), ('onexbet','onexbet')
+  ('betway','betway'), ('onexbet','onexbet'),
+  ('winamax_de','winamax'), ('winamax_fr','winamax'), ('betclic_fr','betclic'), ('betsson','betsson'),
+  ('codere_it','codere'), ('coolbet','coolbet'), ('everygame','everygame'), ('leovegas_se','leovegas'),
+  ('marathonbet','marathonbet'), ('nordicbet','nordicbet'), ('pmu_fr','pmu'), ('sport888','sport888'),
+  ('unibet_fr','unibet'), ('unibet_nl','unibet'), ('unibet_se','unibet')
 ) AS v(src, key) JOIN bookmakers b ON b.key = v.key
 ON CONFLICT DO NOTHING;
 
