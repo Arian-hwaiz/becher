@@ -43,6 +43,7 @@ class NormalizedEvent:
     away_name: str
     start_time: datetime
     markets: list[NormalizedMarket] = field(default_factory=list)
+    links: dict[str, str] = field(default_factory=dict)   # Buchmacher-Schlüssel → Deep-Link zum Event
 
     @property
     def quote_count(self) -> int:

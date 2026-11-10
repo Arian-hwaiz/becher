@@ -192,6 +192,8 @@ Start: `streamlit run dashboard/app.py`. Sechs Seiten, Auswahl links oben.
 
 Der Feed zeigt je Markt, Buchmacher und Ausgang nur den jüngsten Treffer, damit ein Spiel nicht zehnmal untereinander steht.
 
+**Buchmacher-Links:** Der Buchmachername auf jeder Karte (und auf der Seite „Quoten je Event“) ist ein Link. Liefert die Quelle einen Link zum Spiel (die Odds-API tut das mit `includeLinks`, Tabelle `event_links`), geht er direkt zum Spiel beim Buchmacher; sonst zur Startseite des Buchmachers (Spalte `url` in `bookmakers`, dort auch änderbar, z. B. auf die österreichische Seite).
+
 ### Überblick
 
 Kennzahlen (kommende Events, Quoten der letzten Stunde, aktive Buchmacher, Valuebets und Surebets der letzten 24 h), letzter Collector-Lauf, Quoten pro Stunde als Balkendiagramm, Buchmacher-Abdeckung, Verteilung der Treffer-Prozente, Treffer je Buchmacher.
@@ -296,6 +298,7 @@ PostgreSQL 16 mit TimescaleDB (optional; ohne Erweiterung bleibt `odds_snapshots
 
 | Tabelle | Inhalt |
 | --- | --- |
+| `event_links` | Deep-Links je Event und Buchmacher aus der Quelle (Odds-API `includeLinks`) |
 | `bookmakers` | Buchmacher mit `kind` (sharp/soft/exchange), Wettsteuer (`tax_rate`, `tax_mode`), Börsenkommission. 10 vorangelegt. |
 | `bookmaker_source_keys` | Schlüssel des Buchmachers in jeder Quelle (z. B. `odds_api`/`tipico_de` → Tipico) |
 | `sports`, `leagues` | Sportarten und Ligen (Liga-Key aus der Quelle) |

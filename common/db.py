@@ -198,6 +198,13 @@ class Store:
         rows: list[tuple] = []
         for ev in events:
             event_id = self.upsert_event(ev)
+            for bm_key, url in ev.links.items():
+                bid = self.bookmaker_id(ev.source, bm_key)
+                if bid is not None:
+                    self.conn.execute(
+                        """INSERT INTO event_links (event_id, bookmaker_id, url, updated_at) VALUES (%s, %s, %s, %s)
+                           ON CONFLICT (event_id, bookmaker_id) DO UPDATE SET url = excluded.url, updated_at = excluded.updated_at""",
+                        (event_id, bid, url, observed_at))
             for m in ev.markets:
                 mid = self.market_id(event_id, m.type, m.line, m.period)
                 for q in m.quotes:

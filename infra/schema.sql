@@ -23,6 +23,16 @@ CREATE TABLE IF NOT EXISTS bookmakers (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Startseite je Buchmacher (Fallback-Link im Dashboard) und Deep-Links je Event
+ALTER TABLE bookmakers ADD COLUMN IF NOT EXISTS url TEXT;
+CREATE TABLE IF NOT EXISTS event_links (
+    event_id      BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    bookmaker_id  INTEGER NOT NULL REFERENCES bookmakers(id),
+    url           TEXT NOT NULL,
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (event_id, bookmaker_id)
+);
+
 -- Quellen (Odds-API, Betfair, eigener Collector) und ihre Schlüssel je Buchmacher
 CREATE TABLE IF NOT EXISTS bookmaker_source_keys (
     source        TEXT NOT NULL,                 -- z. B. "odds_api"
@@ -215,6 +225,31 @@ INSERT INTO bookmakers (key, name, country, kind, tax_rate, tax_mode, commission
   ('pmu',        'PMU',        'FR', 'soft',     0,     'none',     0),
   ('sport888',   '888sport',   'GI', 'soft',     0,     'none',     0)
 ON CONFLICT (key) DO NOTHING;
+
+-- Startseiten (nur setzen, wenn leer)
+UPDATE bookmakers b SET url = v.url FROM (VALUES
+  ('pinnacle','https://www.pinnacle.com'),
+  ('betfair_ex','https://www.betfair.com/exchange'),
+  ('bet365','https://www.bet365.de'),
+  ('tipico','https://sports.tipico.de'),
+  ('bwin','https://sports.bwin.de'),
+  ('betano','https://www.betano.de'),
+  ('unibet','https://www.unibet.de'),
+  ('williamhill','https://sports.williamhill.com'),
+  ('betway','https://betway.de'),
+  ('onexbet','https://1xbet.com'),
+  ('winamax','https://www.winamax.de'),
+  ('betclic','https://www.betclic.fr'),
+  ('betsson','https://www.betsson.com'),
+  ('codere','https://www.codere.it'),
+  ('coolbet','https://www.coolbet.com'),
+  ('everygame','https://www.everygame.eu'),
+  ('leovegas','https://www.leovegas.com'),
+  ('marathonbet','https://www.marathonbet.com'),
+  ('nordicbet','https://www.nordicbet.com'),
+  ('pmu','https://paris-sportifs.pmu.fr'),
+  ('sport888','https://www.888sport.com')
+) AS v(key, url) WHERE b.key = v.key AND b.url IS NULL;
 
 -- Zuordnung der Odds-API-Schlüssel zu unseren Buchmachern
 INSERT INTO bookmaker_source_keys (source, source_key, bookmaker_id)

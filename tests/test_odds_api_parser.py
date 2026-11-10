@@ -78,3 +78,14 @@ def test_collector_stops_below_credit_reserve(monkeypatch):
     c.fetch()
     # Erste Abfrage läuft (Rest unbekannt), danach 21 − 2 < 20 → die weiteren werden übersprungen
     assert len(calls) == 1 and c.remaining == 21
+
+
+def test_bookmaker_links_are_parsed():
+    import copy
+
+    from collectors.odds_api import parse_events
+
+    payload = copy.deepcopy(json.loads(FIXTURE.read_text(encoding="utf-8")))
+    payload[0]["bookmakers"][0]["link"] = "https://example.test/event/1"
+    ev = parse_events(payload, "soccer_germany_bundesliga")[0]
+    assert ev.links == {payload[0]["bookmakers"][0]["key"]: "https://example.test/event/1"}

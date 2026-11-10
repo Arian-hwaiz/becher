@@ -46,7 +46,7 @@ def coverage(conn, minutes: int = 60) -> pd.DataFrame:
 def opportunities(conn, hours: int = 24, limit: int = 100) -> pd.DataFrame:
     return _df(conn, """
         SELECT o.found_at, o.kind, o.outcome, o.price, o.fair_price, o.ev, o.ev_conservative, o.method,
-               o.reference_age_s, o.details, b.name AS bookmaker, m.type, m.line, m.period,
+               o.reference_age_s, o.details, o.bookmaker_id, b.name AS bookmaker, m.type, m.line, m.period,
                e.id AS event_id, e.home_name, e.away_name, e.start_time, l.name AS league, s.name AS sport
         FROM opportunities o
         JOIN markets m ON m.id = o.market_id
@@ -93,6 +93,16 @@ def runs(conn, limit: int = 200) -> pd.DataFrame:
 
 def bookmaker_names(conn) -> dict[int, str]:
     return {r["id"]: r["name"] for r in conn.execute("SELECT id, name FROM bookmakers").fetchall()}
+
+
+def bookmaker_urls(conn) -> dict[int, str]:
+    return {r["id"]: r["url"] for r in conn.execute("SELECT id, url FROM bookmakers WHERE url IS NOT NULL").fetchall()}
+
+
+def event_links(conn, event_id: int) -> dict[int, str]:
+    """Deep-Links je Buchmacher für ein Event (aus der Quelle, z. B. Odds-API includeLinks)."""
+    return {r["bookmaker_id"]: r["url"] for r in conn.execute(
+        "SELECT bookmaker_id, url FROM event_links WHERE event_id=%s", (event_id,)).fetchall()}
 
 
 def latest_opportunities(conn, hours: int = 24, limit: int = 500) -> pd.DataFrame:

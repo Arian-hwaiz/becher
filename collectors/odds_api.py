@@ -53,6 +53,8 @@ def parse_events(payload: list[dict[str, Any]], league_key: str) -> list[Normali
         for bm in raw.get("bookmakers", []):
             bm_key = bm["key"]
             bm_ts = _ts(bm.get("last_update"))
+            if bm.get("link"):
+                ev.links[bm_key] = bm["link"]
             for m in bm.get("markets", []):
                 mtype = m["key"]
                 if mtype not in ("h2h", "totals", "spreads"):
@@ -120,7 +122,7 @@ class OddsApiCollector(Collector):
                 continue
             r = self.client.get(
                 f"{BASE_URL}/sports/{sport}/odds",
-                params={"regions": self.regions, "markets": self.markets,
+                params={"regions": self.regions, "markets": self.markets, "includeLinks": "true",
                         "oddsFormat": "decimal", "dateFormat": "iso", "apiKey": self.api_key},
             )
             r.raise_for_status()

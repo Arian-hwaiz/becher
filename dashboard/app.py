@@ -34,7 +34,8 @@ st.markdown(
     .opp .pct.arb {color:#0b5ed7;}
     .opp .meta {color:#6c757d; font-size:0.85rem;}
     .opp .ev {font-size:1.05rem; font-weight:600;}
-    .opp .bk {font-weight:600;}
+    .opp a.bk { text-decoration: none; } a.bk:hover { text-decoration: underline; }
+.bk {font-weight:600;}
     .leg {display:flex; justify-content:space-between; padding:3px 0; border-top:1px dashed #eee;}
     .leg .odd {font-weight:700; font-size:1.05rem;}
     </style>
@@ -67,6 +68,14 @@ def fmt_age(ts) -> str:
 
 OUTCOME_LABEL = {"home": "1", "draw": "X", "away": "2", "over": "Über", "under": "Unter"}
 MARKET_LABEL = {"h2h": "Sieger", "totals": "Über/Unter", "spreads": "Handicap"}
+
+
+def bk_link(bid, name, event_id, urls: dict, links: dict) -> str:
+    """Buchmachername als Link: Deep-Link zum Event, sonst Startseite, sonst nur Text."""
+    url = links.get(bid) or urls.get(bid)
+    if not url:
+        return f"<span class='bk'>{name}</span>"
+    return f"<a class='bk' href='{url}' target='_blank' title='{url}'>{name} ↗</a>"
 
 
 def market_text(row) -> str:
@@ -150,9 +159,11 @@ if page == "Scanner":
                 "`python -m collectors.run` und `python scripts/scan.py`.")
     else:
         names = load(q.bookmaker_names)
+        urls = load(q.bookmaker_urls)
         for _, r in feed.iterrows():
             pct = r["pct"]
             is_arb = r["kind"] == "arb"
+            links = load(q.event_links, int(r["event_id"]))
             with st.container():
                 c1, c2, c3 = st.columns([1.1, 4, 2.4])
                 with c1:
@@ -166,11 +177,11 @@ if page == "Scanner":
                             f"<div class='meta'>{market_text(r)}</div>")
                     if is_arb:
                         for leg in r["details"].get("legs", []):
-                            html += (f"<div class='leg'><span><span class='bk'>{names.get(leg['bookmaker_id'], leg['bookmaker_id'])}</span> "
+                            html += (f"<div class='leg'><span>{bk_link(leg['bookmaker_id'], names.get(leg['bookmaker_id'], leg['bookmaker_id']), r['event_id'], urls, links)} "
                                      f"&nbsp; {outcome_text(r, leg['outcome'])}</span>"
                                      f"<span class='odd'>{leg['price']:.2f}</span></div>")
                     else:
-                        html += (f"<div class='leg'><span><span class='bk'>{r['bookmaker']}</span> &nbsp; {outcome_text(r, r['outcome'])}</span>"
+                        html += (f"<div class='leg'><span>{bk_link(r['bookmaker_id'], r['bookmaker'], r['event_id'], urls, links)} &nbsp; {outcome_text(r, r['outcome'])}</span>"
                                  f"<span class='odd'>{float(r['price']):.2f}</span></div>"
                                  f"<div class='meta'>fair {float(r['fair_price']):.2f} · EV {float(r['ev']) * 100:.2f} % · "
                                  f"konservativ {pct:.2f} % · Referenz {r['details'].get('references', [''])[0] if r['details'] else ''} "
@@ -273,6 +284,16 @@ elif page == "Quoten je Event":
         pick = st.selectbox("Event", events["label"].tolist())
         ev = events[events["label"] == pick].iloc[0]
         markets = load(q.event_markets, int(ev["id"]))
+        ev_links = load(q.event_links, int(ev["id"]))
+        bk_urls = load(q.bookmaker_urls)
+        bk_names = load(q.bookmaker_names)
+        link_ids = sorted(set(ev_links) | set(bk_urls), key=lambda i: (i not in ev_links, bk_names.get(i, "")))
+        if link_ids:
+            st.markdown("Zum Buchmacher: " + " · ".join(
+                bk_link(i, bk_names.get(i, str(i)), int(ev["id"]), bk_urls, ev_links) for i in link_ids if i in ev_links)
+                + ("" if not ev_links else "  \n") + "<span class='meta'>Startseiten: " + " · ".join(
+                bk_link(i, bk_names.get(i, str(i)), int(ev["id"]), bk_urls, {}) for i in link_ids if i not in ev_links) + "</span>",
+                unsafe_allow_html=True)
         if markets.empty:
             st.info("Keine Märkte für dieses Event.")
         for _, m in markets.iterrows():

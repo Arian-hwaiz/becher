@@ -74,3 +74,30 @@ def test_second_source_matches_existing_event():
                                (ev["home_team_id"],)).fetchall()
         assert {"odds_api", "betfair"} <= {r["source"] for r in aliases}
         conn.rollback()
+
+
+def test_event_links_are_stored(conn_or_skip=None):
+    import json
+    from datetime import datetime, timezone
+
+    import pytest
+
+    from collectors.odds_api import parse_events
+    from common import db
+    from dashboard import queries as q
+
+    url = os.environ.get("BECHER_TEST_DATABASE_URL")
+    if not url:
+        pytest.skip("BECHER_TEST_DATABASE_URL nicht gesetzt")
+    with db.connect(url) as conn:
+        db.apply_schema(conn)
+        payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        payload[0]["bookmakers"][0]["link"] = "https://example.test/event/1"
+        events = parse_events(payload, "soccer_germany_bundesliga")
+        store = db.Store(conn)
+        store.save_events(events, observed_at=datetime.now(timezone.utc))
+        eid = conn.execute("SELECT event_id FROM event_source_ids WHERE source='odds_api' AND source_id=%s",
+                           (events[0].source_id,)).fetchone()["event_id"]
+        links = q.event_links(conn, eid)
+        assert "https://example.test/event/1" in links.values()
+        assert q.bookmaker_urls(conn)   # Startseiten aus dem Schema
