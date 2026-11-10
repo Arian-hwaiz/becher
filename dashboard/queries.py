@@ -99,6 +99,13 @@ def bookmaker_urls(conn) -> dict[int, str]:
     return {r["id"]: r["url"] for r in conn.execute("SELECT id, url FROM bookmakers WHERE url IS NOT NULL").fetchall()}
 
 
+def event_bookmakers(conn, event_id: int) -> list[int]:
+    """Buchmacher, die für dieses Event Quoten geliefert haben."""
+    return [r["bookmaker_id"] for r in conn.execute(
+        """SELECT DISTINCT o.bookmaker_id FROM odds_snapshots o JOIN markets m ON m.id = o.market_id
+           WHERE m.event_id=%s""", (event_id,)).fetchall()]
+
+
 def event_links(conn, event_id: int) -> dict[int, str]:
     """Deep-Links je Buchmacher für ein Event (aus der Quelle, z. B. Odds-API includeLinks)."""
     return {r["bookmaker_id"]: r["url"] for r in conn.execute(

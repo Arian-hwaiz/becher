@@ -287,7 +287,8 @@ elif page == "Quoten je Event":
         ev_links = load(q.event_links, int(ev["id"]))
         bk_urls = load(q.bookmaker_urls)
         bk_names = load(q.bookmaker_names)
-        link_ids = sorted(set(ev_links) | set(bk_urls), key=lambda i: (i not in ev_links, bk_names.get(i, "")))
+        present = set(load(q.event_bookmakers, int(ev["id"])))
+        link_ids = sorted((set(ev_links) | set(bk_urls)) & present, key=lambda i: (i not in ev_links, bk_names.get(i, "")))
         if link_ids:
             st.markdown("Zum Buchmacher: " + " · ".join(
                 bk_link(i, bk_names.get(i, str(i)), int(ev["id"]), bk_urls, ev_links) for i in link_ids if i in ev_links)
