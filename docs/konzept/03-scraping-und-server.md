@@ -2,6 +2,8 @@
 
 Stand: 9. November 2026 · Schätzwerte, nicht aktuell geprüft
 
+> Überholt in Teilen (10. 11. 2026): Odds-API, Hetzner-Server und Proxies sind durch den lokalen Betrieb ersetzt, siehe [07-gesamtplan-unabhaengiger-kern.md](07-gesamtplan-unabhaengiger-kern.md).
+
 Für den Start reicht ein einziger Server. Die eigentlichen Kosten und Mühen stecken in Proxies und in der Wartung der Scraper.
 
 ## Wie man an die Quoten kommt

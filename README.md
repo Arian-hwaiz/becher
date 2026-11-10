@@ -88,6 +88,8 @@ Läuft die Datenbank schon und ist das Schema älter, spielt `python scripts/ini
 - [Entwicklungsplan privater Kern (Datensammlung + KI)](docs/konzept/04-entwicklungsplan-kern.md)
 - [Verbesserungen bei Berechnungen und Profit](docs/konzept/05-berechnungen-und-profit.md)
 - [Wie Betburger technisch arbeitet: API, Polling, Formeln, Valuebet-Mechanik](docs/konzept/06-betburger-technik-und-mechanik.md)
+- [Gesamtplan: unabhängiger Kern auf einem Gerät (ohne Fremd-APIs, eigene Referenz)](docs/konzept/07-gesamtplan-unabhaengiger-kern.md)
+- [Recherche: Datenquellen, Live-Daten, Hardware](docs/recherche/2026-11-10-unabhaengiger-kern.md)
 
 Visueller Gesamtplan: [docs/visueller-plan.html](docs/visueller-plan.html) (online: https://claude.ai/artifact/3ym8wQp3gTbdVatLbvJ5Ke)
 
