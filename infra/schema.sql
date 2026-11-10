@@ -38,14 +38,13 @@ CREATE TABLE IF NOT EXISTS collector_settings (
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Startseite je Buchmacher (Fallback-Link im Dashboard) und Deep-Links je Event
+-- Startseite je Buchmacher (Fallback-Link im Dashboard)
 ALTER TABLE bookmakers ADD COLUMN IF NOT EXISTS url TEXT;
-CREATE TABLE IF NOT EXISTS event_links (
-    event_id      BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-    bookmaker_id  INTEGER NOT NULL REFERENCES bookmakers(id),
-    url           TEXT NOT NULL,
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (event_id, bookmaker_id)
+
+-- Merker für einmalige Umstellungen bestehender Datenbanken (jede läuft genau einmal)
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    key         TEXT PRIMARY KEY,
+    applied_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Quellen (Odds-API, Betfair, eigener Collector) und ihre Schlüssel je Buchmacher
@@ -97,6 +96,15 @@ CREATE TABLE IF NOT EXISTS events (
     start_time    TIMESTAMPTZ NOT NULL,
     status        TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled','live','finished','cancelled')),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Deep-Links je Event und Buchmacher (Link direkt zum Spiel)
+CREATE TABLE IF NOT EXISTS event_links (
+    event_id      BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    bookmaker_id  INTEGER NOT NULL REFERENCES bookmakers(id),
+    url           TEXT NOT NULL,
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (event_id, bookmaker_id)
 );
 
 -- Ein Event kann in jeder Quelle eine eigene ID haben
@@ -242,6 +250,13 @@ INSERT INTO bookmakers (key, name, country, kind, tax_rate, tax_mode, commission
   ('sport888',   '888sport',   'GI', 'soft',     0,     'none',     0)
 ON CONFLICT (key) DO NOTHING;
 
+-- Einmalige Umstellung bestehender Datenbanken auf Rohquoten ohne Steuer (früherer Startwert 5,3 % on_stake).
+-- Läuft dank Merker nur einmal, ein späteres `set_tax.py --country DE` bleibt also erhalten.
+DO $$ BEGIN
+  INSERT INTO schema_migrations (key) VALUES ('2026-11-tax-default-none');
+  UPDATE bookmakers SET tax_rate = 0, tax_mode = 'none' WHERE tax_rate = 0.053 AND tax_mode = 'on_stake';
+EXCEPTION WHEN unique_violation THEN NULL; END $$;
+
 -- Startseiten (nur setzen, wenn leer)
 UPDATE bookmakers b SET url = v.url FROM (VALUES
   ('pinnacle','https://www.pinnacle.com'),
@@ -268,7 +283,11 @@ UPDATE bookmakers b SET url = v.url FROM (VALUES
 ) AS v(key, url) WHERE b.key = v.key AND b.url IS NULL;
 
 -- Betfair kommt über die offizielle API: kein eigener Scraper nötig
-UPDATE bookmakers SET scraper_status = 'nicht_noetig' WHERE key = 'betfair_ex' AND scraper_status = 'offen';
+-- Nur einmal, damit eine spätere Änderung in der Administration erhalten bleibt.
+DO $$ BEGIN
+  INSERT INTO schema_migrations (key) VALUES ('2026-11-betfair-nicht-noetig');
+  UPDATE bookmakers SET scraper_status = 'nicht_noetig' WHERE key = 'betfair_ex' AND scraper_status = 'offen';
+EXCEPTION WHEN unique_violation THEN NULL; END $$;
 
 -- Zuordnung der Odds-API-Schlüssel zu unseren Buchmachern
 INSERT INTO bookmaker_source_keys (source, source_key, bookmaker_id)

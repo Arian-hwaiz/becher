@@ -582,6 +582,7 @@ elif page == "Administration":
                 "Notiz": st.column_config.TextColumn("Notiz", width="large"),
                 "Seite": st.column_config.LinkColumn("Seite", display_text="öffnen ↗"),
             })
+        edited["Notiz"] = edited["Notiz"].fillna("").astype(str)
         changed = edited[(edited["aktiv"] != show["aktiv"]) | (edited["Scraper"] != show["Scraper"]) | (edited["Notiz"] != show["Notiz"])]
         if not changed.empty:
             with db.connect() as conn:
@@ -589,6 +590,7 @@ elif page == "Administration":
                     q.set_bookmaker_active(conn, int(bid), bool(row["aktiv"]))
                     q.set_bookmaker_scraper(conn, int(bid), row["Scraper"], row["Notiz"])
             st.cache_data.clear()
+            st.session_state.pop("admin_bookmakers", None)
             st.toast(f"{len(changed)} Anbieter gespeichert")
             st.rerun()
 
@@ -597,7 +599,7 @@ elif page == "Administration":
         with db.connect() as conn:
             n_on, n_off = q.activate_only_with_data(conn)
         st.cache_data.clear()
-        st.success(f"{n_on} aktiv, {n_off} inaktiv.")
+        st.toast(f"{n_on} aktiv, {n_off} inaktiv.")
         st.rerun()
     b2.caption("Legende Scraper: " + " · ".join(f"{k} = {v}" for k, v in q.SCRAPER_STATUS.items()))
 
@@ -608,11 +610,14 @@ elif page == "Administration":
     for _, c in cols_df.iterrows():
         k1, k2, k3, k4 = st.columns([1.6, 1.4, 3, 3])
         state = "⚪ noch kein Lauf" if pd.isna(c["last_run"]) else ("🟢 ok" if c["last_ok"] else "🔴 Fehler")
-        on = k1.toggle(c["source"], value=bool(c["enabled"]), key=f"col_{c['source']}")
-        if on != bool(c["enabled"]):
+        _key = f"col_{c['source']}"
+
+        def _save_collector(source=c["source"], key=_key) -> None:
             with db.connect() as conn:
-                q.set_collector_enabled(conn, c["source"], on)
-            st.rerun()
+                q.set_collector_enabled(conn, source, bool(st.session_state[key]))
+
+        st.session_state[_key] = bool(c["enabled"])   # die Datenbank gilt, auch bei Änderung von außen
+        k1.toggle(c["source"], key=_key, on_change=_save_collector)
         k2.write(state)
         k3.caption(f"letzter Lauf {fmt_age(c['last_run'])} · {0 if pd.isna(c['last_snapshots']) else int(c['last_snapshots'])} Quoten · "
                    f"24 h: {int(c['ok_24h'])}/{int(c['runs_24h'])} ok")

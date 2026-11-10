@@ -21,8 +21,10 @@ FAQ: list[tuple[str, str, str]] = [
      "Fallen genau 3 Tore, gewinnen beide. In den anderen Fällen gewinnt eine und die andere verliert, oft mit kleinem Verlust. "
      "Ein Middle ist also keine sichere Sache, sondern eine Wette auf die „Mitte“."),
     ("Grundbegriffe", "Was bedeutet die Prozentzahl auf der Trefferkarte?",
-     "Bei **Valuebets** der konservative Vorteil (EV) in Prozent des Einsatzes. Bei **Surebets** der sichere Gewinn in Prozent "
-     "des Gesamteinsatzes, nach Steuer und Kommission, falls welche eingestellt sind."),
+     "Bei **Valuebets** der konservative Vorteil (EV) in Prozent des Einsatzes. Bei **Surebets** der Gewinn in Prozent "
+     "des Gesamteinsatzes, nach Steuer und Kommission, falls welche eingestellt sind. Sicher ist er nur bei 1X2 und halben Linien (2,5). "
+     "Bei ganzen und Viertel-Linien rechnet Becher ohne Push und halbe Ergebnisse; dort kann der Gewinn kleiner ausfallen "
+     "oder ganz entfallen (bei Push kommt nur der Einsatz zurück)."),
     ("Grundbegriffe", "Was ist eine Dezimalquote?",
      "Die Quote sagt, wie viel man **je 1 € Einsatz zurückbekommt**, Einsatz inklusive. Quote 2,50 und 10 € Einsatz: 25 € zurück, "
      "15 € Gewinn. Die in der Quote steckende Wahrscheinlichkeit ist 1 ÷ Quote, bei 2,50 also 40 %."),
@@ -37,7 +39,7 @@ FAQ: list[tuple[str, str, str]] = [
      "Becher berechnet sie aus den Quoten der Referenzen."),
     ("Rechnen", "Marge (Overround, Vig, Juice)",
      "Der eingebaute Verdienst des Buchmachers. Zählt man 1 ÷ Quote über alle Ausgänge zusammen, kommt mehr als 100 % heraus. "
-     "Der Überschuss ist die Marge. Beispiel 1,90 / 1,90: 52,6 % + 52,6 % = 105,2 %, Marge 5,2 %."),
+     "Der Überschuss ist die Marge. Beispiel 1,90 / 1,90: 52,63 % + 52,63 % = 105,3 %, Marge 5,3 %."),
     ("Rechnen", "Devig (Marge herausrechnen)",
      "Das Verfahren, mit dem aus Quoten mit Marge **faire Wahrscheinlichkeiten** werden. Becher kennt fünf Methoden:\n\n"
      "- **multiplicative**: alle Wahrscheinlichkeiten gleichmäßig herunterskalieren\n"
@@ -50,8 +52,8 @@ FAQ: list[tuple[str, str, str]] = [
      "Der **durchschnittliche Gewinn je Einsatz**, wenn man dieselbe Wette sehr oft spielen könnte. "
      "EV = Wahrscheinlichkeit × Quote − 1. Bei 50 % und Quote 2,10: 0,5 × 2,10 − 1 = +5 %."),
     ("Rechnen", "Konservativer EV",
-     "Der EV, nachdem Becher die geschätzte Wahrscheinlichkeit um ein **Unsicherheitsband** nach unten korrigiert hat. "
-     "Das Band wird größer, wenn die Referenzquote alt ist oder der Markt dünn. Die Trefferkarte zeigt diesen vorsichtigen Wert."),
+     "Der EV, nachdem Becher die geschätzte Wahrscheinlichkeit um ein **Unsicherheitsband** (eine Standardabweichung) nach unten korrigiert hat. "
+     "Das Band wird größer, je älter die Referenzquote ist. Wie dünn ein Markt ist, fließt derzeit nicht ein. Die Trefferkarte zeigt diesen vorsichtigen Wert."),
     ("Rechnen", "Kelly und Viertel-Kelly",
      "Die Kelly-Formel sagt, welcher **Anteil der Bankroll** bei einer Valuebet langfristig am besten ist. "
      "Voller Kelly schwankt stark und setzt eine exakt bekannte Wahrscheinlichkeit voraus, deshalb zeigt Becher ein Viertel davon."),
@@ -63,9 +65,11 @@ FAQ: list[tuple[str, str, str]] = [
      "`python scripts/set_tax.py --country DE` einschalten."),
     ("Rechnen", "Effektive Quote",
      "Die Quote **nach Abzug** von Steuer oder Kommission. Mit ihr rechnen EV und Surebet-Einsätze."),
-    ("Rechnen", "Auszahlung in Prozent (Seite „Quoten je Event“)",
+    ("Rechnen", "Auszahlung in Prozent (Seite „Quotenvergleich“)",
      "Wie viel die **besten Quoten aller Buchmacher zusammen** auszahlen. Unter 100 %: Der Markt hat insgesamt noch Marge. "
-     "Über 100 %: Surebet (vor Steuer und Kommission)."),
+     "Über 100 %: **mögliche** Surebet (vor Steuer und Kommission). Die Seite nimmt die jeweils letzte bekannte Quote jedes Buchmachers, "
+     "auch alte und die inaktiver Anbieter, und rechnet nur mit den Ausgängen, für die eine Quote vorliegt. "
+     "Ob die Surebet wirklich besteht, zeigt nur die Seite „Treffer“, die ausschließlich frische Quoten aktiver Anbieter verwendet."),
 
     # ------------------------------------------------------------ Messen
     ("Messen", "CLV (Closing Line Value)",
@@ -121,11 +125,11 @@ FAQ: list[tuple[str, str, str]] = [
      "Becher nutzt Börsenquoten erst ab einer Mindestliquidität als Referenz."),
     ("Buchmacher und Quellen", "Collector und Scraper",
      "Ein **Collector** holt Quoten aus einer Quelle und speichert sie. Das kann eine API sein (The Odds API, Betfair) "
-     "oder ein **Scraper**, der die Quoten direkt von der Seite eines Buchmachers liest. Den Stand zeigt die Seite „Administration“."),
+     "oder ein **Scraper**, der die Quoten direkt von der Seite eines Buchmachers liest. Den Stand zeigt die Seite „Anbieter & Scraper“."),
     ("Buchmacher und Quellen", "Credits (The Odds API)",
      "Das Kontingent der Odds-API. Ein Abruf kostet Sportarten × Regionen × Märkte Credits; der kostenlose Plan hat 500 im Monat. "
      "Eigene Scraper kosten keine Credits."),
-    ("Buchmacher und Quellen", "Aktiv und inaktiv (Administration)",
+    ("Buchmacher und Quellen", "Aktiv und inaktiv (Anbieter & Scraper)",
      "Ein **inaktiver** Anbieter wird vom Scan ignoriert: keine Treffer bei ihm, und er dient nicht als Referenz. "
      "Seine Quoten werden weiter gesammelt, damit man sieht, ob die Quelle wieder liefert."),
     ("Buchmacher und Quellen", "Scraper-Stand: offen, in Arbeit, läuft, blockiert",
@@ -137,19 +141,20 @@ FAQ: list[tuple[str, str, str]] = [
 
     # ------------------------------------------------------------ Dashboard
     ("Dashboard", "Was zeigen die Seiten?",
-     "- **Scanner**: aktuelle Valuebets und Surebets als Karten, mit Filter und Einsatzrechner\n"
-     "- **Überblick**: Kennzahlen, Quoten pro Stunde, Abdeckung je Buchmacher\n"
-     "- **Quoten je Event**: alle Quoten eines Spiels im Vergleich, beste Quote grün, Verlauf\n"
-     "- **Wetten**: eigene Wetten erfassen, CLV, Konto-Risiko, Devig-Methoden\n"
-     "- **KI**: Einordnung der Treffer und Wochenbericht durch Claude\n"
-     "- **Administration**: alle Anbieter, Scraper-Stand, aktivieren und deaktivieren\n"
-     "- **Collector-Läufe**: Protokoll der Abrufe"),
+     "- **Treffer**: aktuelle Valuebets und Surebets als Karten, mit Filter und Einsatzrechner\n"
+     "- **Quotenvergleich**: alle Quoten eines Spiels im Vergleich, beste Quote grün, Verlauf\n"
+     "- **Auswertung → Überblick**: Kennzahlen, Quoten pro Stunde, Abdeckung je Buchmacher\n"
+     "- **Auswertung → Wetten & CLV**: Wetten erfassen, CLV, Konto-Risiko, Devig-Methoden\n"
+     "- **Auswertung → KI-Auswertung**: Einordnung der Treffer und Wochenbericht durch Claude\n"
+     "- **System → Anbieter & Scraper**: alle Anbieter, Scraper-Stand, aktivieren und deaktivieren\n"
+     "- **System → Collector-Läufe**: Protokoll der Abrufe\n"
+     "- **Hilfe → FAQ & Glossar**: diese Seite"),
     ("Dashboard", "Was bedeutet „Alter“ auf der Karte und „Referenz vor … s“?",
      "**Alter**: wie lange es her ist, dass der Scan den Treffer gefunden hat. **Referenz vor … s**: wie alt die Referenzquote "
      "zum Zeitpunkt des Treffers war. Je älter, desto unsicherer ist der Vorteil."),
     ("Dashboard", "Wie liest man den Einsatzrechner?",
-     "Bei **Surebets** verteilt er den gewählten Gesamteinsatz so auf die Wetten, dass in jedem Ausgang derselbe Betrag zurückkommt, "
-     "und zeigt den sicheren Gewinn. Bei **Valuebets** zeigt er die effektive Quote, den erwarteten Gewinn und den Viertel-Kelly-Anteil."),
+     "Bei **Surebets** verteilt er den gewählten Gesamteinsatz so auf die Wetten, dass derselbe Betrag zurückkommt, egal welche der Wetten gewinnt "
+     "(Push und halbe Ergebnisse bei ganzen und Viertel-Linien sind nicht eingerechnet), und zeigt den Gewinn. Bei **Valuebets** zeigt er die effektive Quote, den erwarteten Gewinn und den Viertel-Kelly-Anteil."),
 ]
 
 CATEGORIES: list[str] = list(dict.fromkeys(c for c, _, _ in FAQ))

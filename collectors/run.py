@@ -60,10 +60,16 @@ def run_collector(collector: Collector) -> tuple[int, int]:
 def run_once(names: list[str] | None = None, scan: bool = False) -> None:
     for name in names or settings.active_collectors:
         if not names:   # ausdrücklich per --only gewählte Collector laufen immer
-            with db.connect() as conn:
-                if not db.collector_enabled(conn, name):
-                    log.info("%s: in der Administration ausgeschaltet, übersprungen", name)
-                    continue
+            try:
+                with db.connect() as conn:
+                    enabled = db.collector_enabled(conn, name)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("%s: Schalter aus der Administration nicht lesbar (%s); Collector läuft. "
+                            "Schema aktualisieren: python scripts/init_db.py", name, exc)
+                enabled = True
+            if not enabled:
+                log.info("%s: in der Administration ausgeschaltet, übersprungen", name)
+                continue
         try:
             collector = make_collector(name)
         except Exception as exc:  # noqa: BLE001

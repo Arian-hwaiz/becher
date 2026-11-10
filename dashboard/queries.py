@@ -215,7 +215,10 @@ def set_bookmaker_active(conn, bookmaker_id: int, active: bool) -> None:
 def set_bookmaker_scraper(conn, bookmaker_id: int, status: str, note: str | None) -> None:
     if status not in SCRAPER_STATUS:
         raise ValueError(status)
-    conn.execute("UPDATE bookmakers SET scraper_status=%s, scraper_note=%s WHERE id=%s", (status, note or None, bookmaker_id))
+    note = note.strip() if isinstance(note, str) else None   # geleerte Zelle kommt als NaN/None an
+    if note in ("", "NaN", "nan", "None"):
+        note = None
+    conn.execute("UPDATE bookmakers SET scraper_status=%s, scraper_note=%s WHERE id=%s", (status, note, bookmaker_id))
 
 
 def activate_only_with_data(conn, stale_hours: int = 48) -> tuple[int, int]:
