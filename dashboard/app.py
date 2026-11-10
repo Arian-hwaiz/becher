@@ -101,6 +101,7 @@ def outcome_text(row, outcome: str) -> str:
 # (Gruppe, Titel im Menü, interner Schlüssel, Adresse, Symbol)
 MENU = [
     ("", "Treffer", "Scanner", "treffer", ":material/radar:"),
+    ("", "Spiele", "Spiele", "spiele", ":material/sports_soccer:"),
     ("", "Quotenvergleich", "Quoten je Event", "quoten", ":material/compare_arrows:"),
     ("Auswertung", "Überblick", "Überblick", "ueberblick", ":material/monitoring:"),
     ("Auswertung", "Wetten & CLV", "Wetten", "wetten", ":material/receipt_long:"),
@@ -298,6 +299,66 @@ elif page == "Überblick":
 
 # ---------------------------------------------------------------- Quoten je Event
 
+elif page == "Spiele":
+    st.title("Spiele")
+    st.caption("Alle kommenden Spiele, für die Quoten vorliegen. Mit dem Filter „Anbieter“ siehst du, was ein einzelner Scraper geholt hat.")
+    bks = load(q.bookmakers_with_events)
+    if bks.empty:
+        st.info("Noch keine Quoten für kommende Spiele. Starte einen Scraper, zum Beispiel "
+                "`python -m collectors.run --once --only admiral --scan`.")
+    else:
+        choices = {"Alle Anbieter": None} | {f"{r['name']} ({int(r['events'])} Spiele)": int(r["id"]) for _, r in bks.iterrows()}
+        wanted_bk = st.query_params.get("anbieter") or ""   # von „Anbieter & Scraper“: /spiele?anbieter=<id>
+        start = next((i for i, v in enumerate(choices.values()) if wanted_bk.isdigit() and v == int(wanted_bk)), 0)
+        f1, f2, f3 = st.columns([2, 3, 2])
+        bk_label = f1.selectbox("Anbieter", list(choices), index=start)
+        bid = choices[bk_label]
+        games = load(q.events_overview, bid)
+        leagues = sorted(games["league"].unique())
+        pick_leagues = f2.multiselect("Liga", leagues, placeholder="alle Ligen")
+        text = f3.text_input("Suche", placeholder="Mannschaft …").strip().lower()
+        if pick_leagues:
+            games = games[games["league"].isin(pick_leagues)]
+        if text:
+            games = games[(games["home_name"].str.lower().str.contains(text, regex=False))
+                          | (games["away_name"].str.lower().str.contains(text, regex=False))]
+
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Spiele", len(games))
+        m2.metric("Quoten", int(games["quotes"].sum()) if len(games) else 0)
+        m3.metric("Ligen", games["league"].nunique())
+        m4.metric("Letzter Abruf", fmt_age(games["last_seen"].max()) if len(games) else "–")
+
+        if games.empty:
+            st.info("Keine Spiele für diese Auswahl.")
+        else:
+            local = games["start_time"].dt.tz_convert("Europe/Vienna")
+            _price = lambda v: "–" if pd.isna(v) else f"{v:.2f}"  # noqa: E731
+            table = pd.DataFrame({
+                "Anstoß": local.dt.weekday.map(dict(enumerate(["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]))) + local.dt.strftime(" %d.%m. %H:%M"),
+                "Liga": games["league"],
+                "Spiel": games["home_name"] + " – " + games["away_name"],
+                "1": games["p1"].map(_price), "X": games["px"].map(_price), "2": games["p2"].map(_price),
+                "Märkte": games["markets"], "Quoten": games["quotes"],
+                "Abruf": games["last_seen"].map(fmt_age),
+            })
+            if bid is None:
+                table["Anbieter"] = games["n_bookmakers"].astype(str) + ": " + games["bookmakers"]
+            else:
+                table["weitere Anbieter"] = (games["n_bookmakers"] - 1).clip(lower=0)
+                table["Beim Anbieter"] = games["link"]
+            table["Vergleich"] = "/quoten?event=" + games["id"].astype(str)
+            st.dataframe(
+                table, hide_index=True, use_container_width=True, height=min(38 * (len(table) + 1) + 4, 900),
+                column_config={
+                    "Beim Anbieter": st.column_config.LinkColumn("Beim Anbieter", display_text="zum Spiel ↗"),
+                    "Vergleich": st.column_config.LinkColumn("Vergleich", display_text="Quoten vergleichen"),
+                    "Anbieter": st.column_config.TextColumn("Anbieter", width="large"),
+                })
+            st.caption(("1 / X / 2 sind die Quoten dieses Anbieters." if bid is not None
+                        else "1 / X / 2 sind die jeweils besten Quoten über alle Anbieter.")
+                       + " Zeiten in Wiener Zeit. „Quoten vergleichen“ öffnet das Spiel im Quotenvergleich.")
+
 elif page == "Quoten je Event":
     st.title("Quotenvergleich")
     events = load(q.upcoming_events, 200)
@@ -305,7 +366,12 @@ elif page == "Quoten je Event":
         st.info("Keine kommenden Events.")
     else:
         events["label"] = events.apply(lambda r: f"{r['start_time']:%d.%m %H:%M}  {r['home_name']} – {r['away_name']}  ({r['league']})", axis=1)
-        pick = st.selectbox("Event", events["label"].tolist())
+        labels = events["label"].tolist()
+        wanted = st.query_params.get("event")   # von der Seite „Spiele“: /quoten?event=<id>
+        start = 0
+        if wanted and wanted.isdigit() and int(wanted) in set(events["id"]):
+            start = int(events.index[events["id"] == int(wanted)][0])
+        pick = st.selectbox("Event", labels, index=start)
         ev = events[events["label"] == pick].iloc[0]
         markets = load(q.event_markets, int(ev["id"]))
         ev_links = load(q.event_links, int(ev["id"]))
@@ -571,16 +637,18 @@ elif page == "Administration":
             "Scraper": view["scraper_status"],
             "Notiz": view["scraper_note"].fillna(""),
             "Seite": view["url"],
+            "Spiele": ["/spiele?anbieter=" + str(i) for i in view["id"]],
         }).set_index("id")
         edited = st.data_editor(
             show, key="admin_bookmakers", use_container_width=True, hide_index=True, height=min(38 * (len(show) + 1) + 4, 900),
-            disabled=["Anbieter", "Typ", "Daten", "zuletzt", "Quoten 24 h", "liefert über", "zugeordnet", "Seite"],
+            disabled=["Anbieter", "Typ", "Daten", "zuletzt", "Quoten 24 h", "liefert über", "zugeordnet", "Seite", "Spiele"],
             column_config={
                 "aktiv": st.column_config.CheckboxColumn("aktiv", help="aus = vom Scan ignoriert"),
                 "Scraper": st.column_config.SelectboxColumn("Scraper", options=list(q.SCRAPER_STATUS), required=True,
                                                              help="offen · in_arbeit · laeuft · blockiert (Bot-Schutz) · nicht_moeglich · nicht_noetig (kommt über API)"),
                 "Notiz": st.column_config.TextColumn("Notiz", width="large"),
                 "Seite": st.column_config.LinkColumn("Seite", display_text="öffnen ↗"),
+                "Spiele": st.column_config.LinkColumn("Spiele", display_text="Liste", help="Alle Spiele dieses Anbieters"),
             })
         edited["Notiz"] = edited["Notiz"].fillna("").astype(str)
         changed = edited[(edited["aktiv"] != show["aktiv"]) | (edited["Scraper"] != show["Scraper"]) | (edited["Notiz"] != show["Notiz"])]

@@ -142,6 +142,7 @@ FAQ: list[tuple[str, str, str]] = [
     # ------------------------------------------------------------ Dashboard
     ("Dashboard", "Was zeigen die Seiten?",
      "- **Treffer**: aktuelle Valuebets und Surebets als Karten, mit Filter und Einsatzrechner\n"
+     "- **Spiele**: Liste aller Spiele mit Quoten, gesamt oder je Anbieter (was ein Scraper geholt hat)\n"
      "- **Quotenvergleich**: alle Quoten eines Spiels im Vergleich, beste Quote grün, Verlauf\n"
      "- **Auswertung → Überblick**: Kennzahlen, Quoten pro Stunde, Abdeckung je Buchmacher\n"
      "- **Auswertung → Wetten & CLV**: Wetten erfassen, CLV, Konto-Risiko, Devig-Methoden\n"

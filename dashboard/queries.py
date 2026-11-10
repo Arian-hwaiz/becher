@@ -256,3 +256,51 @@ def set_collector_enabled(conn, source: str, enabled: bool) -> None:
     conn.execute(
         """INSERT INTO collector_settings (source, enabled, updated_at) VALUES (%s, %s, now())
            ON CONFLICT (source) DO UPDATE SET enabled = excluded.enabled, updated_at = now()""", (source, enabled))
+
+
+# ------------------------------------------------------------------ Seite „Spiele“
+
+def bookmakers_with_events(conn, past_hours: int = 3) -> pd.DataFrame:
+    """Anbieter, die für kommende Spiele Quoten geliefert haben, mit Anzahl Spiele und letztem Abruf."""
+    return _df(conn, """
+        SELECT b.id, b.name, count(DISTINCT m.event_id) AS events, max(o.observed_at) AS last_seen
+        FROM odds_snapshots o
+        JOIN markets m ON m.id = o.market_id
+        JOIN events e ON e.id = m.event_id
+        JOIN bookmakers b ON b.id = o.bookmaker_id
+        WHERE e.start_time > now() - make_interval(hours => %s)
+        GROUP BY b.id, b.name ORDER BY b.name""", (past_hours,))
+
+
+def events_overview(conn, bookmaker_id: int | None = None, past_hours: int = 3) -> pd.DataFrame:
+    """Alle kommenden Spiele mit Quoten. Mit ``bookmaker_id`` nur die Spiele dieses Anbieters samt seiner 1X2-Quoten
+    und seinem Direkt-Link; ohne Anbieter die jeweils beste 1X2-Quote über alle Anbieter."""
+    return _df(conn, """
+        WITH latest AS (
+            SELECT DISTINCT ON (o.market_id, o.bookmaker_id, o.outcome)
+                   m.event_id, m.id AS market_id, m.type, m.period, o.bookmaker_id, o.outcome,
+                   o.price::float AS price, o.observed_at
+            FROM odds_snapshots o
+            JOIN markets m ON m.id = o.market_id
+            JOIN events e ON e.id = m.event_id
+            WHERE e.start_time > now() - make_interval(hours => %(past)s) AND NOT o.is_lay
+            ORDER BY o.market_id, o.bookmaker_id, o.outcome, o.observed_at DESC
+        ), picked AS (
+            SELECT * FROM latest WHERE %(bid)s::int IS NULL OR bookmaker_id = %(bid)s::int
+        )
+        SELECT e.id, e.start_time, l.name AS league, e.home_name, e.away_name,
+               max(p.price) FILTER (WHERE p.type = 'h2h' AND p.period = 'full_time' AND p.outcome = 'home') AS p1,
+               max(p.price) FILTER (WHERE p.type = 'h2h' AND p.period = 'full_time' AND p.outcome = 'draw') AS px,
+               max(p.price) FILTER (WHERE p.type = 'h2h' AND p.period = 'full_time' AND p.outcome = 'away') AS p2,
+               count(DISTINCT p.market_id) AS markets,
+               count(*) AS quotes,
+               max(p.observed_at) AS last_seen,
+               (SELECT count(DISTINCT a.bookmaker_id) FROM latest a WHERE a.event_id = e.id) AS n_bookmakers,
+               (SELECT string_agg(DISTINCT b.name, ', ' ORDER BY b.name)
+                  FROM latest a JOIN bookmakers b ON b.id = a.bookmaker_id WHERE a.event_id = e.id) AS bookmakers,
+               (SELECT el.url FROM event_links el WHERE el.event_id = e.id AND el.bookmaker_id = %(bid)s::int) AS link
+        FROM picked p
+        JOIN events e ON e.id = p.event_id
+        JOIN leagues l ON l.id = e.league_id
+        GROUP BY e.id, e.start_time, l.name, e.home_name, e.away_name
+        ORDER BY e.start_time, e.home_name""", {"bid": bookmaker_id, "past": past_hours})
