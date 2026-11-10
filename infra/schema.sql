@@ -363,3 +363,18 @@ DO $$ BEGIN
     scraper_note = 'Playwright, liest die WebSocket-Daten (WAMP) der Länderseite, h2h + totals, Direkt-Links'
   WHERE key = 'betathome';
 EXCEPTION WHEN unique_violation THEN NULL; END $$;
+
+-- Winamax (collectors/winamax.py): eigener Scraper unter source='winamax' für den vorhandenen Buchmacher winamax.
+-- Betano: Cloudflare-Challenge (403), nicht umgangen.
+INSERT INTO bookmaker_source_keys (source, source_key, bookmaker_id)
+SELECT 'winamax', 'winamax', id FROM bookmakers WHERE key = 'winamax'
+ON CONFLICT DO NOTHING;
+DO $$ BEGIN
+  INSERT INTO schema_migrations (key) VALUES ('2026-11-scraper-winamax-betano');
+  UPDATE bookmakers SET scraper_status = 'laeuft',
+    scraper_note = 'Playwright, liest die socket.io-Daten der Ligaseite (winamax.de), nur 1X2, Direkt-Links'
+  WHERE key = 'winamax';
+  UPDATE bookmakers SET scraper_status = 'blockiert',
+    scraper_note = 'Cloudflare-Challenge (403), Weiterleitung auf betano.de, nicht umgangen'
+  WHERE key = 'betano';
+EXCEPTION WHEN unique_violation THEN NULL; END $$;

@@ -44,11 +44,16 @@ def make_collector(name: str) -> Collector:
     if name == "betathome":
         from collectors.betathome import BetAtHomeCollector
         return BetAtHomeCollector()
-    raise ValueError(f"unbekannter Collector {name!r}; bekannt: odds_api, betfair, bwin, admiral, interwetten, betathome")
+    if name == "winamax":
+        from collectors.winamax import WinamaxCollector
+        return WinamaxCollector()
+    raise ValueError(f"unbekannter Collector {name!r}; bekannt: odds_api, betfair, bwin, admiral, interwetten, "
+                     "betathome, winamax")
 
 
 # Scraper-Quelle → Buchmacher-Schlüssel (für den Status „blockiert“)
-SCRAPER_BOOKMAKER = {"bwin": "bwin", "admiral": "admiral", "interwetten": "interwetten", "betathome": "betathome"}
+SCRAPER_BOOKMAKER = {"bwin": "bwin", "admiral": "admiral", "interwetten": "interwetten", "betathome": "betathome",
+                     "winamax": "winamax"}
 
 
 def _mark_blocked(source: str, reason: str) -> None:
@@ -131,7 +136,7 @@ def run_once(names: list[str] | None = None, scan: bool = False, check_switch: b
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true", help="nur ein Durchlauf")
-    parser.add_argument("--only", help="nur diese Collector, kommagetrennt (odds_api, betfair, bwin, admiral, interwetten, betathome)")
+    parser.add_argument("--only", help="nur diese Collector, kommagetrennt (odds_api, betfair, bwin, admiral, interwetten, betathome, winamax)")
     parser.add_argument("--scan", action="store_true", help="nach jedem Durchlauf scannen")
     parser.add_argument("--interval", type=int, help="Abstand im Dauerbetrieb in Sekunden (Standard COLLECT_INTERVAL_SECONDS)")
     args = parser.parse_args()
