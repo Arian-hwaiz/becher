@@ -179,7 +179,7 @@ Der Collector loggt je Abfrage die verbrauchten Credits und den Rest (`x-request
 
 ## 6. Das Dashboard
 
-Start: `streamlit run dashboard/app.py`. Sechs Seiten, Auswahl links oben.
+Start: `streamlit run dashboard/app.py`. Acht Seiten, Auswahl links oben.
 
 ### Scanner (Hauptseite, nach dem Vorbild der Betburger-Surebet-Seite)
 
@@ -223,6 +223,23 @@ Hier werden die eigenen Wetten erfasst und am Ende gemessen. Oben Kennzahlen (An
 Die KI-Schicht (Phase 6). Zwei Knöpfe: **Treffer einordnen** lässt Claude die aktuellen Treffer priorisieren (Priorität 1 bis 5, Begründung, konkrete Risiken, Warnungen zu Daten und Collectoren, Vorschläge für Schwellen). **Wochenbericht** schreibt einen Bericht in Markdown (Gesamtbild, eigene Wetten und CLV, auffällige Treffer, Datenqualität, Empfehlungen). Der Regler bestimmt das Zeitfenster. „Kontext ansehen“ zeigt genau die Zahlen, die an Claude gehen. Alle Auswertungen werden in `ai_reports` gespeichert und unten aufgeklappt angezeigt, mit Modell und Tokenverbrauch.
 
 Die KI rechnet nichts neu. Sie bekommt die von Becher berechneten Zahlen (EV, konservativer EV, faire Quote, Referenzen, CLV je Buchmacher und Markt, Collector-Läufe) und ordnet sie ein. Ohne `ANTHROPIC_API_KEY` sind die Knöpfe gesperrt; jede Auswertung kostet API-Guthaben (Größenordnung bei 40 Treffern und 200 Wetten: 10 000 bis 20 000 Eingabe-Tokens, also wenige Cent).
+
+### Administration
+
+![Administration](bilder/dashboard-administration.png)
+
+Die Liste aller Anbieter, gedacht als To-do-Liste für die eigenen Scraper. Oben Kennzahlen (Anbieter, aktiv, liefern Daten, eigener Scraper läuft, To-do). In der Tabelle je Anbieter:
+
+- **aktiv** (Häkchen): aus heißt, der Scan ignoriert den Anbieter, es gibt keine Treffer bei ihm und er dient nicht als Referenz. Seine Quoten werden weiter gesammelt, damit man sieht, ob die Quelle wieder liefert.
+- **Daten**: 🟢 liefert (letzte Quote jünger als 6 h), 🟡 älter als 6 h, 🔴 älter als 48 h, ⚪ keine Daten. Dazu letzte Quote, Quoten der letzten 24 h, über welche Quelle der Anbieter gerade kommt und welchen Quellen er zugeordnet ist.
+- **Scraper** (Auswahl) und **Notiz**: Stand des eigenen Scrapers: offen, in Arbeit, läuft, blockiert (Bot-Schutz, wird nicht umgangen), nicht möglich, nicht nötig (kommt über eine offizielle API).
+- **Seite**: Link zur Startseite.
+
+Änderungen in der Tabelle werden sofort gespeichert. Der Knopf „Nur Anbieter mit Daten aktiv lassen“ aktiviert alle, die in den letzten 48 h Quoten geliefert haben, und deaktiviert den Rest. Darunter die **Collector (Quellen)** mit Schalter, Zustand des letzten Laufs und Fehlermeldung; ein ausgeschalteter Collector wird im Dauerbetrieb übersprungen (`--only <name>` läuft trotzdem).
+
+### FAQ
+
+Glossar mit Suche: Valuebet, Surebet, Middle, faire Quote, Marge, Devig, EV, Kelly, CLV, alle Markt-Kürzel (1X2, TO/TU, AH1/AH2, DNB, BTTS …), Börse, Liquidität, Scraper-Stand und die Dashboard-Seiten. Die Texte stehen in `dashboard/faq.py`.
 
 ### Collector-Läufe
 
@@ -298,6 +315,7 @@ PostgreSQL 16 mit TimescaleDB (optional; ohne Erweiterung bleibt `odds_snapshots
 
 | Tabelle | Inhalt |
 | --- | --- |
+| `collector_settings` | Collector ein/aus (Administration) |
 | `event_links` | Deep-Links je Event und Buchmacher aus der Quelle (Odds-API `includeLinks`) |
 | `bookmakers` | Buchmacher mit `kind` (sharp/soft/exchange), Wettsteuer (`tax_rate`, `tax_mode`), Börsenkommission. 10 vorangelegt. |
 | `bookmaker_source_keys` | Schlüssel des Buchmachers in jeder Quelle (z. B. `odds_api`/`tipico_de` → Tipico) |
@@ -386,6 +404,8 @@ Datei `.env` (aus `.env.example`), nie committen:
 | `AI_MODEL`, `AI_EFFORT` | Modell und Denktiefe (low, medium, high) der KI-Schicht | `claude-opus-5-5`, `medium` |
 
 Scan-Parameter (`engine.scan.ScanConfig`, per CLI `--method`, `--min-ev`, `--max-age`): Devig-Methode, Mindest-EV, maximales Quotenalter, Mindestliquidität Börse, n_eff, z, Gewichte sharp/exchange.
+
+**Wettsteuer:** Standard ist 0 bei allen Buchmachern (reiner Quotenvergleich). `python scripts/set_tax.py --country DE` schaltet die deutschen 5,3 % vom Einsatz bei Buchmachern mit deutscher Lizenz ein, `--country OHNE` wieder aus, `--show` zeigt den Stand.
 
 Buchmacher-Eigenschaften (Steuer, Kommission, Typ) stehen in der Tabelle `bookmakers` und werden direkt dort gepflegt, z. B. `UPDATE bookmakers SET tax_rate = 0 WHERE key = 'bet365';` wenn ein Konto nicht in Deutschland geführt wird.
 

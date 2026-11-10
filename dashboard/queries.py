@@ -173,3 +173,83 @@ def ai_reports(conn, limit: int = 50) -> pd.DataFrame:
     return _df(conn, """
         SELECT id, created_at, kind, model, context_hours, input_tokens, output_tokens, content
         FROM ai_reports ORDER BY created_at DESC LIMIT %s""", (limit,))
+
+
+# ---------------------------------------------------------------- Administration
+
+SCRAPER_STATUS = {"offen": "offen", "in_arbeit": "in Arbeit", "laeuft": "läuft", "blockiert": "blockiert (Bot-Schutz)",
+                  "nicht_moeglich": "nicht möglich", "nicht_noetig": "nicht nötig (API)"}
+
+
+def admin_bookmakers(conn, fresh_hours: int = 6, stale_hours: int = 48) -> pd.DataFrame:
+    """Alle Anbieter mit Schalter, Scraper-Stand und Datenlage (welche Quelle liefert, wann zuletzt)."""
+    df = _df(conn, """
+        WITH seen AS (
+            SELECT bookmaker_id, max(observed_at) AS last_seen,
+                   count(*) FILTER (WHERE observed_at > now() - interval '24 hours') AS quotes_24h,
+                   string_agg(DISTINCT source, ', ') FILTER (WHERE observed_at > now() - interval '48 hours') AS live_sources
+            FROM odds_snapshots WHERE observed_at > now() - interval '14 days' GROUP BY bookmaker_id
+        ), keys AS (
+            SELECT bookmaker_id, string_agg(DISTINCT source, ', ' ORDER BY source) AS sources
+            FROM bookmaker_source_keys GROUP BY bookmaker_id
+        )
+        SELECT b.id, b.key, b.name, b.kind, b.country, b.is_active, b.tax_rate::float AS tax_rate, b.url,
+               b.scraper_status, b.scraper_note, k.sources, s.live_sources, s.last_seen, coalesce(s.quotes_24h, 0) AS quotes_24h
+        FROM bookmakers b LEFT JOIN seen s ON s.bookmaker_id = b.id LEFT JOIN keys k ON k.bookmaker_id = b.id
+        ORDER BY b.kind, b.name""")
+    if df.empty:
+        df["data_state"] = []
+        return df
+    now = pd.Timestamp.now(tz="UTC")
+    age_h = (now - pd.to_datetime(df["last_seen"], utc=True)).dt.total_seconds() / 3600
+    df["age_h"] = age_h
+    df["data_state"] = ["keine" if pd.isna(a) else "frisch" if a <= fresh_hours else "alt" if a <= stale_hours else "veraltet"
+                        for a in age_h]
+    return df
+
+
+def set_bookmaker_active(conn, bookmaker_id: int, active: bool) -> None:
+    conn.execute("UPDATE bookmakers SET is_active=%s WHERE id=%s", (active, bookmaker_id))
+
+
+def set_bookmaker_scraper(conn, bookmaker_id: int, status: str, note: str | None) -> None:
+    if status not in SCRAPER_STATUS:
+        raise ValueError(status)
+    conn.execute("UPDATE bookmakers SET scraper_status=%s, scraper_note=%s WHERE id=%s", (status, note or None, bookmaker_id))
+
+
+def activate_only_with_data(conn, stale_hours: int = 48) -> tuple[int, int]:
+    """Lässt nur Anbieter aktiv, die in den letzten ``stale_hours`` Quoten geliefert haben. Gibt (aktiv, inaktiv) zurück."""
+    conn.execute(
+        """UPDATE bookmakers b SET is_active = EXISTS (
+               SELECT 1 FROM odds_snapshots o WHERE o.bookmaker_id = b.id AND o.observed_at > now() - make_interval(hours => %s))""",
+        (stale_hours,))
+    r = conn.execute("SELECT count(*) FILTER (WHERE is_active) AS a, count(*) FILTER (WHERE NOT is_active) AS i FROM bookmakers").fetchone()
+    return r["a"], r["i"]
+
+
+def admin_collectors(conn, known: list[str] | None = None) -> pd.DataFrame:
+    """Je Collector (Quelle): eingeschaltet, letzter Lauf, Erfolg, Fehler, Läufe der letzten 24 h."""
+    df = _df(conn, """
+        WITH last AS (
+            SELECT DISTINCT ON (source) source, started_at, finished_at, ok, events, snapshots, error
+            FROM collector_runs ORDER BY source, started_at DESC
+        ), day AS (
+            SELECT source, count(*) AS runs_24h, count(*) FILTER (WHERE ok) AS ok_24h
+            FROM collector_runs WHERE started_at > now() - interval '24 hours' GROUP BY source
+        ), names AS (
+            SELECT source FROM last UNION SELECT source FROM collector_settings UNION SELECT unnest(%s::text[])
+        )
+        SELECT n.source, coalesce(c.enabled, TRUE) AS enabled, l.started_at AS last_run, l.ok AS last_ok,
+               l.events AS last_events, l.snapshots AS last_snapshots, l.error AS last_error,
+               coalesce(d.runs_24h, 0) AS runs_24h, coalesce(d.ok_24h, 0) AS ok_24h
+        FROM names n LEFT JOIN last l ON l.source = n.source LEFT JOIN day d ON d.source = n.source
+        LEFT JOIN collector_settings c ON c.source = n.source
+        WHERE n.source <> 'demo' ORDER BY n.source""", (list(known or []),))
+    return df
+
+
+def set_collector_enabled(conn, source: str, enabled: bool) -> None:
+    conn.execute(
+        """INSERT INTO collector_settings (source, enabled, updated_at) VALUES (%s, %s, now())
+           ON CONFLICT (source) DO UPDATE SET enabled = excluded.enabled, updated_at = now()""", (source, enabled))

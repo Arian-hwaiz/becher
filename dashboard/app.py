@@ -98,7 +98,7 @@ def outcome_text(row, outcome: str) -> str:
 # ---------------------------------------------------------------- Sidebar
 
 st.sidebar.title("🍺 Becher")
-page = st.sidebar.radio("Seite", ["Scanner", "Überblick", "Quoten je Event", "Wetten", "KI", "Collector-Läufe"], label_visibility="collapsed")
+page = st.sidebar.radio("Seite", ["Scanner", "Überblick", "Quoten je Event", "Wetten", "KI", "Administration", "Collector-Läufe", "FAQ"], label_visibility="collapsed")
 
 try:
     summary = load(q.summary)
@@ -498,6 +498,103 @@ elif page == "KI":
                     st.markdown(r["content"])
                 st.caption(f"{r['model']} · {r['input_tokens']} / {r['output_tokens']} Tokens")
 
+# ---------------------------------------------------------------- Administration
+
+elif page == "Administration":
+    from common.config import settings as _settings
+
+    st.title("Administration")
+    st.caption("Alle Anbieter mit Datenlage und Scraper-Stand. Inaktive Anbieter werden weiter gesammelt, aber vom Scan ignoriert "
+               "(keine Treffer, keine Referenz). Änderungen in der Tabelle werden sofort gespeichert.")
+    with db.connect() as conn:
+        adm = q.admin_bookmakers(conn)
+        cols_df = q.admin_collectors(conn, _settings.active_collectors)
+
+    STATE_ICON = {"frisch": "🟢 liefert", "alt": "🟡 älter als 6 h", "veraltet": "🔴 älter als 48 h", "keine": "⚪ keine Daten"}
+    a1, a2, a3, a4, a5 = st.columns(5)
+    a1.metric("Anbieter", len(adm))
+    a2.metric("aktiv", int(adm["is_active"].sum()) if not adm.empty else 0)
+    a3.metric("liefern Daten", int((adm["data_state"] == "frisch").sum()) if not adm.empty else 0)
+    a4.metric("eigener Scraper läuft", int((adm["scraper_status"] == "laeuft").sum()) if not adm.empty else 0)
+    a5.metric("To-do (offen / in Arbeit)", int(adm["scraper_status"].isin(["offen", "in_arbeit"]).sum()) if not adm.empty else 0)
+
+    st.subheader("Anbieter")
+    f1, f2, f3 = st.columns([2, 2, 2])
+    f_status = f1.multiselect("Scraper-Stand", list(q.SCRAPER_STATUS), format_func=q.SCRAPER_STATUS.get)
+    f_data = f2.multiselect("Datenlage", list(STATE_ICON), format_func=STATE_ICON.get)
+    f_active = f3.radio("Anzeigen", ["alle", "nur aktive", "nur inaktive"], horizontal=True)
+    view = adm.copy()
+    if f_status:
+        view = view[view["scraper_status"].isin(f_status)]
+    if f_data:
+        view = view[view["data_state"].isin(f_data)]
+    if f_active != "alle":
+        view = view[view["is_active"] == (f_active == "nur aktive")]
+
+    if view.empty:
+        st.info("Keine Anbieter für diese Auswahl.")
+    else:
+        show = pd.DataFrame({
+            "id": view["id"],
+            "aktiv": view["is_active"].astype(bool),
+            "Anbieter": view["name"],
+            "Typ": view["kind"].map({"sharp": "Referenz", "exchange": "Börse", "soft": "Buchmacher"}),
+            "Daten": view["data_state"].map(STATE_ICON),
+            "zuletzt": view["last_seen"].map(fmt_age),
+            "Quoten 24 h": view["quotes_24h"].astype(int),
+            "liefert über": view["live_sources"].fillna("–"),
+            "zugeordnet": view["sources"].fillna("–"),
+            "Scraper": view["scraper_status"],
+            "Notiz": view["scraper_note"].fillna(""),
+            "Seite": view["url"],
+        }).set_index("id")
+        edited = st.data_editor(
+            show, key="admin_bookmakers", use_container_width=True, hide_index=True, height=min(38 * (len(show) + 1) + 4, 900),
+            disabled=["Anbieter", "Typ", "Daten", "zuletzt", "Quoten 24 h", "liefert über", "zugeordnet", "Seite"],
+            column_config={
+                "aktiv": st.column_config.CheckboxColumn("aktiv", help="aus = vom Scan ignoriert"),
+                "Scraper": st.column_config.SelectboxColumn("Scraper", options=list(q.SCRAPER_STATUS), required=True,
+                                                             help="offen · in_arbeit · laeuft · blockiert (Bot-Schutz) · nicht_moeglich · nicht_noetig (kommt über API)"),
+                "Notiz": st.column_config.TextColumn("Notiz", width="large"),
+                "Seite": st.column_config.LinkColumn("Seite", display_text="öffnen ↗"),
+            })
+        changed = edited[(edited["aktiv"] != show["aktiv"]) | (edited["Scraper"] != show["Scraper"]) | (edited["Notiz"] != show["Notiz"])]
+        if not changed.empty:
+            with db.connect() as conn:
+                for bid, row in changed.iterrows():
+                    q.set_bookmaker_active(conn, int(bid), bool(row["aktiv"]))
+                    q.set_bookmaker_scraper(conn, int(bid), row["Scraper"], row["Notiz"])
+            st.cache_data.clear()
+            st.toast(f"{len(changed)} Anbieter gespeichert")
+            st.rerun()
+
+    b1, b2 = st.columns([2, 5])
+    if b1.button("Nur Anbieter mit Daten aktiv lassen", help="Aktiviert alle, die in den letzten 48 h Quoten geliefert haben, und deaktiviert den Rest"):
+        with db.connect() as conn:
+            n_on, n_off = q.activate_only_with_data(conn)
+        st.cache_data.clear()
+        st.success(f"{n_on} aktiv, {n_off} inaktiv.")
+        st.rerun()
+    b2.caption("Legende Scraper: " + " · ".join(f"{k} = {v}" for k, v in q.SCRAPER_STATUS.items()))
+
+    st.subheader("Collector (Quellen)")
+    st.caption("Ein ausgeschalteter Collector wird im Dauerbetrieb übersprungen. Mit `--only <name>` läuft er trotzdem.")
+    if cols_df.empty:
+        st.info("Noch keine Collector bekannt.")
+    for _, c in cols_df.iterrows():
+        k1, k2, k3, k4 = st.columns([1.6, 1.4, 3, 3])
+        state = "⚪ noch kein Lauf" if pd.isna(c["last_run"]) else ("🟢 ok" if c["last_ok"] else "🔴 Fehler")
+        on = k1.toggle(c["source"], value=bool(c["enabled"]), key=f"col_{c['source']}")
+        if on != bool(c["enabled"]):
+            with db.connect() as conn:
+                q.set_collector_enabled(conn, c["source"], on)
+            st.rerun()
+        k2.write(state)
+        k3.caption(f"letzter Lauf {fmt_age(c['last_run'])} · {0 if pd.isna(c['last_snapshots']) else int(c['last_snapshots'])} Quoten · "
+                   f"24 h: {int(c['ok_24h'])}/{int(c['runs_24h'])} ok")
+        if isinstance(c["last_error"], str) and c["last_error"] and not c["last_ok"]:
+            k4.caption(f"Fehler: {c['last_error'][:160]}")
+
 # ---------------------------------------------------------------- Collector-Läufe
 
 elif page == "Collector-Läufe":
@@ -517,3 +614,23 @@ elif page == "Collector-Läufe":
         runs["dauer_s"] = (runs["finished_at"] - runs["started_at"]).dt.total_seconds().round(1)
         st.dataframe(runs[["started_at", "source", "ok", "events", "snapshots", "dauer_s", "error"]],
                      hide_index=True, use_container_width=True)
+
+# ---------------------------------------------------------------- FAQ
+
+elif page == "FAQ":
+    from dashboard import faq as _faq
+
+    st.title("FAQ und Glossar")
+    st.caption("Begriffe, Abkürzungen und Rechenwege, die in Becher vorkommen.")
+    term = st.text_input("Suchen", placeholder="z. B. Valuebet, AH1, CLV, Marge …")
+    hits = _faq.search(term)
+    if not hits:
+        st.info("Kein Eintrag gefunden.")
+    for cat in _faq.CATEGORIES:
+        entries = [e for e in hits if e[0] == cat]
+        if not entries:
+            continue
+        st.subheader(cat)
+        for _, title, text in entries:
+            with st.expander(title, expanded=bool(term)):
+                st.markdown(text)

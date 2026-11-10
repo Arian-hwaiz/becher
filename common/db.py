@@ -36,6 +36,12 @@ def apply_schema(conn: psycopg.Connection) -> None:
     conn.execute(SCHEMA_PATH.read_text(encoding="utf-8"))
 
 
+def collector_enabled(conn, source: str) -> bool:
+    """Ist der Collector in der Administration eingeschaltet? Ohne Eintrag: ja."""
+    row = conn.execute("SELECT enabled FROM collector_settings WHERE source=%s", (source,)).fetchone()
+    return True if row is None else bool(row["enabled"])
+
+
 class Store:
     """Schreibt normalisierte Events in die Datenbank. Cacht Nachschlage-IDs pro Lauf."""
 

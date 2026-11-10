@@ -23,6 +23,21 @@ CREATE TABLE IF NOT EXISTS bookmakers (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Administration: Stand des eigenen Scrapers je Buchmacher (To-do-Liste im Dashboard)
+ALTER TABLE bookmakers ADD COLUMN IF NOT EXISTS scraper_status TEXT NOT NULL DEFAULT 'offen';
+ALTER TABLE bookmakers ADD COLUMN IF NOT EXISTS scraper_note TEXT;
+DO $$ BEGIN
+  ALTER TABLE bookmakers ADD CONSTRAINT bookmakers_scraper_status_chk
+    CHECK (scraper_status IN ('offen','in_arbeit','laeuft','blockiert','nicht_moeglich','nicht_noetig'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Administration: Collector (Quellen) ein- und ausschalten; fehlt die Zeile, gilt der Collector als eingeschaltet
+CREATE TABLE IF NOT EXISTS collector_settings (
+    source      TEXT PRIMARY KEY,
+    enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Startseite je Buchmacher (Fallback-Link im Dashboard) und Deep-Links je Event
 ALTER TABLE bookmakers ADD COLUMN IF NOT EXISTS url TEXT;
 CREATE TABLE IF NOT EXISTS event_links (
@@ -197,23 +212,24 @@ CREATE TABLE IF NOT EXISTS collector_runs (
     error       TEXT
 );
 
--- Startdaten: Sportarten und bekannte Buchmacher
+-- Startdaten: Sportarten und bekannte Buchmacher. Steuer steht überall auf 0 (Rohquoten-Vergleich);
+-- deutsche Wettsteuer 5,3 % bei Bedarf mit `python scripts/set_tax.py --country DE` einschalten.
 INSERT INTO sports (key, name) VALUES ('soccer','Fußball'), ('tennis','Tennis'), ('basketball','Basketball')
 ON CONFLICT (key) DO NOTHING;
 
 INSERT INTO bookmakers (key, name, country, kind, tax_rate, tax_mode, commission) VALUES
   ('pinnacle',   'Pinnacle',   'CW', 'sharp',    0,     'none',     0),
   ('betfair_ex', 'Betfair Exchange', 'GB', 'exchange', 0, 'none',  0.05),
-  ('bet365',     'Bet365',     'DE', 'soft',     0.053, 'on_stake', 0),
-  ('tipico',     'Tipico',     'DE', 'soft',     0.053, 'on_stake', 0),
-  ('bwin',       'bwin',       'DE', 'soft',     0.053, 'on_stake', 0),
-  ('betano',     'Betano',     'DE', 'soft',     0.053, 'on_stake', 0),
-  ('unibet',     'Unibet',     'DE', 'soft',     0.053, 'on_stake', 0),
+  ('bet365',     'Bet365',     'DE', 'soft',     0,     'none',     0),
+  ('tipico',     'Tipico',     'DE', 'soft',     0,     'none',     0),
+  ('bwin',       'bwin',       'DE', 'soft',     0,     'none',     0),
+  ('betano',     'Betano',     'DE', 'soft',     0,     'none',     0),
+  ('unibet',     'Unibet',     'DE', 'soft',     0,     'none',     0),
   ('williamhill','William Hill','GB','soft',     0,     'none',     0),
   ('betway',     'Betway',     'GB', 'soft',     0,     'none',     0),
   ('onexbet',    '1xBet',      'CY', 'soft',     0,     'none',     0),
-  -- weitere Buchmacher, die die Odds-API für Region eu liefert (Steuer 5,3 % nur bei deutscher Lizenz)
-  ('winamax',    'Winamax',    'DE', 'soft',     0.053, 'on_stake', 0),
+  -- weitere Buchmacher, die die Odds-API für Region eu liefert 
+  ('winamax',    'Winamax',    'DE', 'soft',     0,     'none',     0),
   ('betclic',    'Betclic',    'FR', 'soft',     0,     'none',     0),
   ('betsson',    'Betsson',    'MT', 'soft',     0,     'none',     0),
   ('codere',     'Codere',     'IT', 'soft',     0,     'none',     0),
@@ -250,6 +266,9 @@ UPDATE bookmakers b SET url = v.url FROM (VALUES
   ('pmu','https://paris-sportifs.pmu.fr'),
   ('sport888','https://www.888sport.com')
 ) AS v(key, url) WHERE b.key = v.key AND b.url IS NULL;
+
+-- Betfair kommt über die offizielle API: kein eigener Scraper nötig
+UPDATE bookmakers SET scraper_status = 'nicht_noetig' WHERE key = 'betfair_ex' AND scraper_status = 'offen';
 
 -- Zuordnung der Odds-API-Schlüssel zu unseren Buchmachern
 INSERT INTO bookmaker_source_keys (source, source_key, bookmaker_id)
