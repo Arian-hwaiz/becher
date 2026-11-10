@@ -25,3 +25,7 @@ Thumbs.db
 .venv/
 .pytest_cache/
 *.egg-info/
+
+# Laufzeitdateien von scripts/becher.ps1
+.run/
+logs/

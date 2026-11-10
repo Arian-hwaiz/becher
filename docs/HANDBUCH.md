@@ -179,7 +179,23 @@ Der Collector loggt je Abfrage die verbrauchten Credits und den Rest (`x-request
 
 ## 6. Das Dashboard
 
-Start: `streamlit run dashboard/app.py`. Die **Menüleiste oben** führt zu den neun Seiten: direkt zu „Treffer“ (Scanner), „Spiele“ (Liste aller Spiele, gesamt oder je Anbieter mit dessen Quoten und Direkt-Link) und „Quotenvergleich“ (Quoten je Event), dazu die Gruppen **Auswertung** (Überblick, Wetten & CLV, KI-Auswertung), **System** (Anbieter & Scraper, Collector-Läufe) und **Hilfe** (FAQ & Glossar). Die Seitenleiste links zeigt nur die Filter der aktuellen Seite. Jede Seite hat eine eigene Adresse, z. B. `http://localhost:8501/anbieter`.
+Becher hat zwei getrennte Bereiche:
+
+- **Nutzeransicht**, `http://localhost:8501`: Treffer, Spiele, Quotenvergleich, die Gruppe **Auswertung** (Überblick, Wetten & CLV, KI-Auswertung) und **Hilfe** (FAQ & Glossar).
+- **Admin-Bereich**, `http://localhost:8502`: „Anbieter & Scraper“ (Liste aller Anbieter, mit „Details“ öffnet sich die Ansicht eines Anbieters: Zustand, Scraper-Stand, letzte Läufe mit Fehlern, was geholt wird, Einstellungen) und „Collector-Läufe“. Optionaler Passwortschutz über `ADMIN_PASSWORD` in `.env`.
+
+Starten, stoppen und prüfen unter Windows, ohne dass Fenster offen bleiben:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\becher.ps1 start     # Nutzeransicht, Admin-Bereich und Scraper
+powershell -ExecutionPolicy Bypass -File scripts\becher.ps1 status
+powershell -ExecutionPolicy Bypass -File scripts\becher.ps1 restart   # z. B. nach git pull
+powershell -ExecutionPolicy Bypass -File scripts\becher.ps1 stop
+```
+
+Alles läuft unsichtbar im Hintergrund, die Ausgaben stehen in `logs\`. Von Hand geht es mit `streamlit run dashboard/app.py` und `streamlit run dashboard/admin.py --server.port 8502`.
+
+Oben rechts schaltet **🌙 Dunkel** zwischen hellem und dunklem Farbschema um; die Wahl gilt für beide Bereiche und bleibt gespeichert. Die Seite „Spiele“ zeigt alle Spiele gesamt (beste Quote je Ausgang mit Anbieter und Auszahlung in Prozent) oder je Anbieter. Die Seitenleiste links zeigt nur die Filter der aktuellen Seite.
 
 ### Scanner (Hauptseite, nach dem Vorbild der Betburger-Surebet-Seite)
 

@@ -1,12 +1,17 @@
-"""Becher Dashboard: Scanner-Ansicht wie bei Betburger plus Überblick.
+"""Becher Dashboard in zwei getrennten Bereichen.
 
-    streamlit run dashboard/app.py
+    streamlit run dashboard/app.py                         # Nutzeransicht, http://localhost:8501
+    streamlit run dashboard/admin.py --server.port 8502    # Admin-Bereich,  http://localhost:8502
 
-Liest direkt aus der Datenbank (DATABASE_URL aus .env). Seiten:
-Scanner (Treffer-Feed mit Filtern und Einsatzrechner) · Überblick · Quoten je Event · Collector-Läufe.
+Nutzeransicht: Treffer · Spiele · Quotenvergleich · Auswertung · FAQ.
+Admin-Bereich: Anbieter & Scraper (Liste und Detailansicht je Anbieter) · Collector-Läufe.
+Beide lesen direkt aus der Datenbank (DATABASE_URL aus .env). ``dashboard/admin.py`` setzt nur
+BECHER_BEREICH=admin und führt diese Datei aus.
 """
 from __future__ import annotations
 
+import hmac
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,32 +21,88 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # Projektwurzel
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from streamlit import config as _st_config
 
 from common import db
+from common.config import settings as _settings
 from dashboard import queries as q
 from engine import surebet as sb
 from engine import account_health as ahmod
 from engine import clv as clvmod
 from engine import method_eval as memod
 
-st.set_page_config(page_title="Becher", page_icon="🍺", layout="wide", initial_sidebar_state="auto")
+ADMIN = os.environ.get("BECHER_BEREICH", "nutzer") == "admin"   # gesetzt von dashboard/admin.py
+
+st.set_page_config(page_title="Becher Admin" if ADMIN else "Becher", page_icon="🛠️" if ADMIN else "🍺",
+                   layout="wide", initial_sidebar_state="auto")
+
+
+def _reload_browser() -> None:
+    """Seite im Browser neu laden. Streamlit übernimmt ein geändertes Farbschema erst beim Neuladen."""
+    try:
+        st.html("<script>window.location.reload()</script>", unsafe_allow_javascript=True)
+    except TypeError:   # ältere Streamlit-Version ohne JavaScript in st.html
+        import streamlit.components.v1 as _components
+
+        _components.html("<script>window.parent.location.reload()</script>", height=0)
+
+
+# Hell/Dunkel: die Wahl steht in der Datenbank (ui_settings) und gilt für beide Bereiche, auch nach einem Neustart.
+try:
+    with db.connect() as _conn:
+        _saved_theme = q.get_ui_setting(_conn, "theme")
+except Exception:  # noqa: BLE001  (Datenbank nicht erreichbar oder Schema älter: Standard verwenden)
+    _saved_theme = None
+THEME = _saved_theme if _saved_theme in ("light", "dark") else (_st_config.get_option("theme.base") or "light")
+DARK = THEME == "dark"
+if (_st_config.get_option("theme.base") or "light") != THEME:
+    _st_config.set_option("theme.base", THEME)
+    _reload_browser()
+    st.stop()
+
+_C = ({"card": "#1f1e1b", "line": "#3a3834", "dash": "#33312d", "meta": "#a3a09a", "value": "#4ade80", "arb": "#6ea8fe", "best": "#1e4d2b"}
+      if DARK else
+      {"card": "#fff", "line": "#e3e6ea", "dash": "#eee", "meta": "#6c757d", "value": "#1a7f37", "arb": "#0b5ed7", "best": "#d4edda"})
 
 st.markdown(
     """
     <style>
-    .opp {border:1px solid #e3e6ea; border-radius:8px; padding:10px 14px; margin-bottom:8px; background:#fff;}
-    .opp .pct {font-size:1.6rem; font-weight:700; color:#1a7f37;}
-    .opp .pct.arb {color:#0b5ed7;}
-    .opp .meta {color:#6c757d; font-size:0.85rem;}
+    .opp {border:1px solid %(line)s; border-radius:8px; padding:10px 14px; margin-bottom:8px; background:%(card)s;}
+    .opp .pct {font-size:1.6rem; font-weight:700; color:%(value)s;}
+    .opp .pct.arb {color:%(arb)s;}
+    .opp .meta {color:%(meta)s; font-size:0.85rem;}
+    .meta {color:%(meta)s; font-size:0.85rem;}
+    .st-key-themeswitch {position:fixed; top:0.75rem; right:1.25rem; z-index:1000001; width:auto !important;}
+    .st-key-themeswitch label {margin-bottom:0;}
+    .badge-admin {background:#b7791f; color:#fff; border-radius:6px; padding:2px 8px; font-size:0.8rem; font-weight:600;}
+    .stMainBlockContainer {padding-top:4.5rem;}
     .opp .ev {font-size:1.05rem; font-weight:600;}
     .opp a.bk { text-decoration: none; } a.bk:hover { text-decoration: underline; }
 .bk {font-weight:600;}
-    .leg {display:flex; justify-content:space-between; padding:3px 0; border-top:1px dashed #eee;}
+    .leg {display:flex; justify-content:space-between; padding:3px 0; border-top:1px dashed %(dash)s;}
     .leg .odd {font-weight:700; font-size:1.05rem;}
     </style>
-    """,
+    """ % _C,
     unsafe_allow_html=True,
 )
+
+
+def _save_theme() -> None:
+    choice = "dark" if st.session_state["theme_dark"] else "light"
+    try:
+        with db.connect() as conn:
+            q.set_ui_setting(conn, "theme", choice)
+    except Exception:  # noqa: BLE001  (ohne Tabelle gilt die Wahl bis zum Neustart)
+        pass
+    _st_config.set_option("theme.base", choice)
+    st.session_state["_theme_reload"] = True
+
+
+with st.container(key="themeswitch"):
+    st.toggle("🌙 Dunkel", value=DARK, key="theme_dark", on_change=_save_theme, help="Zwischen hellem und dunklem Farbschema wechseln")
+if st.session_state.pop("_theme_reload", False):
+    _reload_browser()
+    st.stop()
 
 
 @st.cache_data(ttl=15, show_spinner=False)
@@ -105,17 +166,21 @@ def outcome_text(row, outcome: str) -> str:
 
 # Menüleiste oben, in Gruppen. Die Seitenleiste bleibt für die Filter der jeweiligen Seite frei.
 # (Gruppe, Titel im Menü, interner Schlüssel, Adresse, Symbol)
-MENU = [
+MENU_NUTZER = [
     ("", "Treffer", "Scanner", "treffer", ":material/radar:"),
     ("", "Spiele", "Spiele", "spiele", ":material/sports_soccer:"),
     ("", "Quotenvergleich", "Quoten je Event", "quoten", ":material/compare_arrows:"),
     ("Auswertung", "Überblick", "Überblick", "ueberblick", ":material/monitoring:"),
     ("Auswertung", "Wetten & CLV", "Wetten", "wetten", ":material/receipt_long:"),
     ("Auswertung", "KI-Auswertung", "KI", "ki", ":material/psychology:"),
-    ("System", "Anbieter & Scraper", "Administration", "anbieter", ":material/settings:"),
-    ("System", "Collector-Läufe", "Collector-Läufe", "laeufe", ":material/history:"),
     ("Hilfe", "FAQ & Glossar", "FAQ", "faq", ":material/help:"),
 ]
+# Admin-Bereich: eigene Adresse (Port 8502), eigenes Menü, getrennt von der Nutzeransicht
+MENU_ADMIN = [
+    ("", "Anbieter & Scraper", "Administration", "anbieter", ":material/settings:"),
+    ("", "Collector-Läufe", "Collector-Läufe", "laeufe", ":material/history:"),
+]
+MENU = MENU_ADMIN if ADMIN else MENU_NUTZER
 
 
 def _nothing() -> None:   # die Seiten werden unten in einer Kette gerendert; st.Page braucht nur ein Ziel
@@ -125,11 +190,23 @@ def _nothing() -> None:   # die Seiten werden unten in einer Kette gerendert; st
 _nav: dict[str, list] = {}
 for _group, _title, _key, _path, _icon in MENU:
     _nav.setdefault(_group, []).append(
-        st.Page(_nothing, title=_title, icon=_icon, url_path=_path, default=(_key == "Scanner")))
-st.logo(str(Path(__file__).parent / "logo.svg"), size="large")
+        st.Page(_nothing, title=_title, icon=_icon, url_path=_path, default=(_key == MENU[0][2])))
+st.logo(str(Path(__file__).parent / ("logo-admin.svg" if ADMIN else "logo.svg")), size="large")
 _current = st.navigation(_nav, position="top")
 _current.run()
 page = next(k for _, t, k, _, _ in MENU if t == _current.title)
+
+if ADMIN and _settings.admin_password and not st.session_state.get("admin_ok"):
+    st.title("Becher Admin")
+    with st.form("admin_login"):
+        _pw = st.text_input("Passwort", type="password")
+        if st.form_submit_button("Anmelden"):
+            if hmac.compare_digest(_pw.encode(), _settings.admin_password.encode()):
+                st.session_state["admin_ok"] = True
+                st.rerun()
+            st.error("Passwort stimmt nicht.")
+    st.caption("Das Passwort steht als ADMIN_PASSWORD in der Datei .env.")
+    st.stop()
 
 try:
     summary = load(q.summary)
@@ -339,12 +416,18 @@ elif page == "Spiele":
             st.info("Keine Spiele für diese Auswahl.")
         else:
             local = games["start_time"].dt.tz_convert("Europe/Vienna")
-            _price = lambda v: "–" if pd.isna(v) else f"{v:.2f}"  # noqa: E731
+
+            def _odds(price_col: str, name_col: str) -> list[str]:
+                """Quote als Text; in der Gesamtansicht mit dem Anbieter, der sie bietet."""
+                return ["–" if pd.isna(v) else (f"{v:.2f}" if bid is not None else f"{v:.2f}  {n}")
+                        for v, n in zip(games[price_col], games[name_col])]
+
             table = pd.DataFrame({
                 "Anstoß": local.dt.weekday.map(dict(enumerate(["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]))) + local.dt.strftime(" %d.%m. %H:%M"),
                 "Liga": games["league"],
                 "Spiel": games["home_name"] + " – " + games["away_name"],
-                "1": games["p1"].map(_price), "X": games["px"].map(_price), "2": games["p2"].map(_price),
+                "1": _odds("p1", "b1"), "X": _odds("px", "bx"), "2": _odds("p2", "b2"),
+                "Auszahlung %": games["payout"],
                 "Märkte": games["markets"], "Quoten": games["quotes"],
                 "Abruf": games["last_seen"].map(fmt_age),
             })
@@ -357,12 +440,21 @@ elif page == "Spiele":
             st.dataframe(
                 table, hide_index=True, use_container_width=True, height=min(38 * (len(table) + 1) + 4, 900),
                 column_config={
+                    "Auszahlung %": st.column_config.NumberColumn(
+                        "Auszahlung %", format="%.2f",
+                        help="Was die gezeigten 1X2-Quoten zusammen auszahlen. Über 100 = mögliche Surebet, darunter liegt die Marge."),
                     "Beim Anbieter": st.column_config.LinkColumn("Beim Anbieter", display_text="zum Spiel ↗"),
                     "Vergleich": st.column_config.LinkColumn("Vergleich", display_text="Quoten vergleichen"),
                     "Anbieter": st.column_config.TextColumn("Anbieter", width="large"),
                 })
-            st.caption(("1 / X / 2 sind die Quoten dieses Anbieters." if bid is not None
-                        else "1 / X / 2 sind die jeweils besten Quoten über alle Anbieter.")
+            if bid is None:
+                over = games[games["payout"] > 100]
+                if len(over):
+                    st.success(f"{len(over)} Spiele mit Auszahlung über 100 % (mögliche Surebet): "
+                               + ", ".join((over["home_name"] + " – " + over["away_name"]).head(5)))
+            st.caption(("1 / X / 2 sind die Quoten dieses Anbieters, die Auszahlung zeigt seine Marge." if bid is not None
+                        else "1 / X / 2 sind die jeweils besten Quoten über alle Anbieter, daneben steht, wer sie bietet. "
+                             "Die Auszahlung vergleicht diese besten Quoten: über 100 % wäre eine mögliche Surebet.")
                        + " Zeiten in Wiener Zeit. „Quoten vergleichen“ öffnet das Spiel im Quotenvergleich.")
 
 elif page == "Quoten je Event":
@@ -406,7 +498,7 @@ elif page == "Quoten je Event":
             order = [c for c in ["home", "draw", "away", "over", "under"] if c in piv.columns]
             piv = piv[order].rename(columns=OUTCOME_LABEL)
             best = piv.max()
-            st.dataframe(piv.style.highlight_max(axis=0, color="#d4edda").format("{:.2f}"), use_container_width=True)
+            st.dataframe(piv.style.highlight_max(axis=0, color=_C["best"]).format("{:.2f}"), use_container_width=True)
             inv = sum(1 / v for v in best if pd.notna(v))
             st.caption(f"Beste Quoten: Auszahlung {100 / inv:.2f} %  ·  Marge {(1 / inv - 1) * 100:+.2f} %")
             hist = load(q.market_history, int(m["id"]), 72)
@@ -597,16 +689,138 @@ elif page == "KI":
 # ---------------------------------------------------------------- Administration
 
 elif page == "Administration":
-    from common.config import settings as _settings
-
-    st.title("Anbieter & Scraper")
-    st.caption("Alle Anbieter mit Datenlage und Scraper-Stand. Inaktive Anbieter werden weiter gesammelt, aber vom Scan ignoriert "
-               "(keine Treffer, keine Referenz). Änderungen in der Tabelle werden sofort gespeichert.")
     with db.connect() as conn:
         adm = q.admin_bookmakers(conn)
         cols_df = q.admin_collectors(conn, _settings.active_collectors)
 
     STATE_ICON = {"frisch": "🟢 liefert", "alt": "🟡 älter als 6 h", "veraltet": "🔴 älter als 48 h", "keine": "⚪ keine Daten"}
+    KIND = {"sharp": "Referenz", "exchange": "Börse", "soft": "Buchmacher"}
+    _user_url = _settings.dashboard_url.rstrip("/")
+
+    # ---------- Detailansicht eines Anbieters: /?id=<id> im Admin-Bereich
+    _pick = st.query_params.get("id", "")
+    if _pick.isdigit() and int(_pick) in set(adm["id"]):
+        b = adm.set_index("id").loc[int(_pick)]
+        bid = int(_pick)
+        with db.connect() as conn:
+            run_sources = q.bookmaker_run_sources(conn, bid)
+            b_runs = q.source_runs(conn, run_sources, 30)
+            b_leagues = q.bookmaker_leagues(conn, bid)
+            b_markets = q.bookmaker_markets(conn, bid)
+            b_keys = q.bookmaker_source_keys(conn, bid)
+            b_hours = q.bookmaker_quotes_per_hour(conn, bid, 48)
+        own_runs = b_runs[b_runs["source"] == b["key"]] if not b_runs.empty else b_runs
+        icon, sentence = q.bookmaker_health(b, own_runs if not own_runs.empty else None)
+
+        n1, n2 = st.columns([1.2, 6])
+        if n1.button("← Alle Anbieter"):
+            del st.query_params["id"]
+            st.rerun()
+        names = dict(zip(adm["id"], adm["name"]))
+        other = n2.selectbox("Anbieter wechseln", list(names), index=list(names).index(bid), format_func=names.get, label_visibility="collapsed")
+        if other != bid:
+            st.query_params["id"] = str(other)
+            st.rerun()
+
+        st.title(f"{icon} {b['name']}")
+        st.markdown(f"**{sentence}**" + ("" if b["is_active"] else "  \nDer Anbieter ist **inaktiv**: Er wird weiter gesammelt, aber vom Scan ignoriert."))
+        if isinstance(b["scraper_note"], str) and b["scraper_note"]:
+            st.caption(f"Notiz: {b['scraper_note']}")
+
+        d1, d2, d3, d4, d5, d6 = st.columns(6)
+        d1.metric("Scraper-Stand", q.SCRAPER_STATUS.get(b["scraper_status"], b["scraper_status"]).split(" (")[0])
+        d2.metric("Letzte Quote", fmt_age(b["last_seen"]))
+        d3.metric("Spiele (kommend)", int(b_leagues["events"].sum()) if not b_leagues.empty else 0)
+        d4.metric("Quoten aktuell", int(b_leagues["quotes"].sum()) if not b_leagues.empty else 0)
+        d5.metric("Quoten 24 h", int(b["quotes_24h"]))
+        day = own_runs[own_runs["started_at"] > pd.Timestamp.now(tz="UTC") - pd.Timedelta(hours=24)] if not own_runs.empty else own_runs
+        d6.metric("Läufe 24 h (ok / alle)", f"{int(day['ok'].fillna(False).sum())} / {len(day)}" if len(day) else "–")
+
+        if not own_runs.empty and own_runs.iloc[0]["ok"] is False:
+            st.error(f"Letzter Lauf fehlgeschlagen ({fmt_age(own_runs.iloc[0]['started_at'])}): {str(own_runs.iloc[0]['error'])[:400]}")
+
+        left, right = st.columns([2, 3])
+        with left:
+            st.subheader("Einstellungen")
+            with st.form(f"bk_{bid}"):
+                f_on = st.toggle("aktiv (im Scan berücksichtigen)", value=bool(b["is_active"]))
+                f_stat = st.selectbox("Scraper-Stand", list(q.SCRAPER_STATUS), index=list(q.SCRAPER_STATUS).index(b["scraper_status"]),
+                                      format_func=q.SCRAPER_STATUS.get)
+                f_note = st.text_area("Notiz", value=b["scraper_note"] if isinstance(b["scraper_note"], str) else "", height=90)
+                if st.form_submit_button("Speichern", type="primary"):
+                    with db.connect() as conn:
+                        q.set_bookmaker_active(conn, bid, f_on)
+                        q.set_bookmaker_scraper(conn, bid, f_stat, f_note)
+                    st.cache_data.clear()
+                    st.toast(f"{b['name']} gespeichert")
+                    st.rerun()
+            own = cols_df[cols_df["source"] == b["key"]]
+            if not own.empty:
+                _ck = f"detail_col_{b['key']}"
+
+                def _save_own(source=b["key"], key=_ck) -> None:
+                    with db.connect() as conn:
+                        q.set_collector_enabled(conn, source, bool(st.session_state[key]))
+
+                st.session_state[_ck] = bool(own.iloc[0]["enabled"])
+                st.toggle(f"Scraper „{b['key']}“ im Dauerbetrieb mitlaufen lassen", key=_ck, on_change=_save_own,
+                          help="Aus = wird im Dauerbetrieb übersprungen. Gilt ab dem nächsten Durchlauf.")
+            st.subheader("Stammdaten")
+            facts = {
+                "Typ": KIND.get(b["kind"], b["kind"]),
+                "Land": b["country"] or "–",
+                "Schlüssel": b["key"],
+                "Steuer": f"{b['tax_rate'] * 100:.1f} %",
+                "Daten kommen über": b["live_sources"] if isinstance(b["live_sources"], str) else "–",
+                "Zugeordnete Quellen": ", ".join(f"{r.source}: {r.source_key}" for r in b_keys.itertuples()) or "–",
+            }
+            st.markdown("\n".join(f"- **{k}:** {v}" for k, v in facts.items()))
+            links = []
+            if isinstance(b["url"], str) and b["url"]:
+                links.append(f"[Seite des Anbieters ↗]({b['url']})")
+            links.append(f"[Alle Spiele dieses Anbieters ↗]({_user_url}/spiele?anbieter={bid})")
+            st.markdown(" · ".join(links))
+
+        with right:
+            st.subheader("Was der Scraper holt")
+            if b_leagues.empty:
+                st.info("Für kommende Spiele liegen von diesem Anbieter keine Quoten vor.")
+            else:
+                st.dataframe(pd.DataFrame({
+                    "Liga": b_leagues["league"], "Spiele": b_leagues["events"], "Quoten": b_leagues["quotes"],
+                    "von": b_leagues["first_start"].map(lambda t: f"{local_time(t):%d.%m.}"),
+                    "bis": b_leagues["last_start"].map(lambda t: f"{local_time(t):%d.%m.}"),
+                    "Abruf": b_leagues["last_seen"].map(fmt_age),
+                }), hide_index=True, use_container_width=True)
+                st.dataframe(pd.DataFrame({
+                    "Markt": b_markets["type"].map(lambda t: MARKET_LABEL.get(t, t)), "Linien": b_markets["lines"].fillna("–"),
+                    "Spiele": b_markets["events"], "Quoten": b_markets["quotes"],
+                }), hide_index=True, use_container_width=True)
+            if not b_hours.empty:
+                fig = px.bar(b_hours, x="hour", y="quotes", color="source", labels={"hour": "", "quotes": "Quoten je Stunde", "source": "Quelle"})
+                fig.update_layout(height=230, margin=dict(l=10, r=10, t=10, b=10), template="plotly_dark" if DARK else "plotly_white")
+                st.plotly_chart(fig, use_container_width=True)
+
+        st.subheader("Letzte Läufe")
+        if b_runs.empty:
+            st.info("Für diesen Anbieter gibt es noch keine Läufe." if b["scraper_status"] != "blockiert"
+                    else "Keine Läufe, der Anbieter ist blockiert.")
+        else:
+            st.dataframe(pd.DataFrame({
+                "Start": b_runs["started_at"].map(lambda t: f"{local_time(t):%d.%m. %H:%M:%S}"),
+                "Quelle": b_runs["source"],
+                "Ergebnis": b_runs["ok"].map(lambda v: "🟢 ok" if v is True else ("🔴 Fehler" if v is False else "⏳ läuft")),
+                "Spiele": b_runs["events"], "Quoten": b_runs["snapshots"],
+                "Dauer (s)": (b_runs["finished_at"] - b_runs["started_at"]).dt.total_seconds().round(1),
+                "Fehler": b_runs["error"].fillna(""),
+            }), hide_index=True, use_container_width=True)
+            if any(src != b["key"] for src in b_runs["source"]):
+                st.caption("Quellen, die nicht wie der Anbieter heißen, sind Sammelquellen, die mehrere Anbieter auf einmal liefern.")
+        st.stop()
+
+    st.title("Anbieter & Scraper")
+    st.caption("Alle Anbieter mit Datenlage und Scraper-Stand. „Details“ öffnet die Ansicht eines Anbieters. Inaktive Anbieter werden weiter "
+               "gesammelt, aber vom Scan ignoriert. Änderungen in der Tabelle werden sofort gespeichert.")
     a1, a2, a3, a4, a5 = st.columns(5)
     a1.metric("Anbieter", len(adm))
     a2.metric("aktiv", int(adm["is_active"].sum()) if not adm.empty else 0)
@@ -615,6 +829,11 @@ elif page == "Administration":
     a5.metric("To-do (offen / in Arbeit)", int(adm["scraper_status"].isin(["offen", "in_arbeit"]).sum()) if not adm.empty else 0)
 
     st.subheader("Anbieter")
+    _names = dict(zip(adm["id"], adm["name"]))
+    _open = st.selectbox("Anbieter im Detail öffnen", [None] + list(_names), format_func=lambda i: "Anbieter wählen …" if i is None else _names[i])
+    if _open is not None:
+        st.query_params["id"] = str(_open)
+        st.rerun()
     f1, f2, f3 = st.columns([2, 2, 2])
     f_status = f1.multiselect("Scraper-Stand", list(q.SCRAPER_STATUS), format_func=q.SCRAPER_STATUS.get)
     f_data = f2.multiselect("Datenlage", list(STATE_ICON), format_func=STATE_ICON.get)
@@ -634,7 +853,8 @@ elif page == "Administration":
             "id": view["id"],
             "aktiv": view["is_active"].astype(bool),
             "Anbieter": view["name"],
-            "Typ": view["kind"].map({"sharp": "Referenz", "exchange": "Börse", "soft": "Buchmacher"}),
+            "Details": ["/?id=" + str(i) for i in view["id"]],
+            "Typ": view["kind"].map(KIND),
             "Daten": view["data_state"].map(STATE_ICON),
             "zuletzt": view["last_seen"].map(fmt_age),
             "Quoten 24 h": view["quotes_24h"].astype(int),
@@ -643,16 +863,17 @@ elif page == "Administration":
             "Scraper": view["scraper_status"],
             "Notiz": view["scraper_note"].fillna(""),
             "Seite": view["url"],
-            "Spiele": ["/spiele?anbieter=" + str(i) for i in view["id"]],
+            "Spiele": [f"{_user_url}/spiele?anbieter={i}" for i in view["id"]],
         }).set_index("id")
         edited = st.data_editor(
             show, key="admin_bookmakers", use_container_width=True, hide_index=True, height=min(38 * (len(show) + 1) + 4, 900),
-            disabled=["Anbieter", "Typ", "Daten", "zuletzt", "Quoten 24 h", "liefert über", "zugeordnet", "Seite", "Spiele"],
+            disabled=["Anbieter", "Typ", "Daten", "zuletzt", "Quoten 24 h", "liefert über", "zugeordnet", "Seite", "Spiele", "Details"],
             column_config={
                 "aktiv": st.column_config.CheckboxColumn("aktiv", help="aus = vom Scan ignoriert"),
                 "Scraper": st.column_config.SelectboxColumn("Scraper", options=list(q.SCRAPER_STATUS), required=True,
                                                              help="offen · in_arbeit · laeuft · blockiert (Bot-Schutz) · nicht_moeglich · nicht_noetig (kommt über API)"),
                 "Notiz": st.column_config.TextColumn("Notiz", width="large"),
+                "Details": st.column_config.LinkColumn("Details", display_text="öffnen", help="Status, Läufe und Abdeckung dieses Anbieters"),
                 "Seite": st.column_config.LinkColumn("Seite", display_text="öffnen ↗"),
                 "Spiele": st.column_config.LinkColumn("Spiele", display_text="Liste", help="Alle Spiele dieses Anbieters"),
             })

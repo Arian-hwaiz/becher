@@ -93,3 +93,53 @@ def test_events_overview_per_bookmaker():
             conn.execute("DELETE FROM events WHERE id=%s", (ev,))
             conn.execute("DELETE FROM leagues WHERE key='test_spiele'")
             conn.commit()
+
+
+def test_payout_and_health_helpers():
+    assert q.payout_percent(2.10, None, 2.10) == 105.0
+    assert q.payout_percent(2.0, 3.0, 6.0) == 100.0
+    assert q.payout_percent(None, 3.0, 2.0) is None
+    row = {"scraper_status": "laeuft", "data_state": "frisch"}
+    assert q.bookmaker_health(row)[0] == "🟢"
+    assert q.bookmaker_health({**row, "data_state": "veraltet"})[0] == "🟡"
+    assert q.bookmaker_health({"scraper_status": "blockiert", "data_state": "keine"})[0] == "🔴"
+    assert q.bookmaker_health({"scraper_status": "offen", "data_state": "keine"})[0] == "⚪"
+
+
+def test_bookmaker_detail_queries_and_ui_setting():
+    """Admin-Detailansicht: Abdeckung je Liga und Markt, Läufe, Farbschema-Einstellung."""
+    now = datetime.now(timezone.utc)
+    with db.connect(URL) as conn:
+        db.apply_schema(conn)
+        bid = conn.execute("SELECT id FROM bookmakers WHERE key='admiral'").fetchone()["id"]
+        sport = conn.execute("SELECT id FROM sports WHERE key='soccer'").fetchone()["id"]
+        league = conn.execute("INSERT INTO leagues (sport_id, key, name) VALUES (%s, 'test_detail', 'Testliga Detail') RETURNING id",
+                              (sport,)).fetchone()["id"]
+        ev = conn.execute("INSERT INTO events (league_id, home_name, away_name, start_time) VALUES (%s,'H','G',%s) RETURNING id",
+                          (league, now + timedelta(days=2))).fetchone()["id"]
+        try:
+            m1 = conn.execute("INSERT INTO markets (event_id, type) VALUES (%s,'h2h') RETURNING id", (ev,)).fetchone()["id"]
+            m2 = conn.execute("INSERT INTO markets (event_id, type, line) VALUES (%s,'totals',2.5) RETURNING id", (ev,)).fetchone()["id"]
+            for mk, outcome in ((m1, "home"), (m1, "draw"), (m1, "away"), (m2, "over"), (m2, "under")):
+                conn.execute("INSERT INTO odds_snapshots (observed_at, market_id, bookmaker_id, outcome, price, source) "
+                             "VALUES (%s,%s,%s,%s,2.0,'test')", (now, mk, bid, outcome))
+            conn.execute("INSERT INTO collector_runs (source, started_at, finished_at, ok, events, snapshots) "
+                         "VALUES ('admiral', %s, %s, TRUE, 1, 5)", (now, now))
+            lg = q.bookmaker_leagues(conn, bid).set_index("league").loc["Testliga Detail"]
+            assert lg["events"] == 1 and lg["quotes"] == 5
+            mk = q.bookmaker_markets(conn, bid).set_index("type")
+            assert mk.loc["totals", "lines"] == "2.5" or "2.5" in mk.loc["totals", "lines"].split(" · ")
+            sources = q.bookmaker_run_sources(conn, bid)
+            assert "admiral" in sources and "test" not in sources
+            runs = q.source_runs(conn, sources, 5)
+            assert (runs["source"] == "admiral").any()
+            q.set_ui_setting(conn, "test_theme", "dark")
+            q.set_ui_setting(conn, "test_theme", "light")
+            assert q.get_ui_setting(conn, "test_theme") == "light" and q.get_ui_setting(conn, "gibt_es_nicht") is None
+        finally:
+            conn.execute("DELETE FROM ui_settings WHERE key='test_theme'")
+            conn.execute("DELETE FROM collector_runs WHERE source='admiral' AND started_at=%s", (now,))
+            conn.execute("DELETE FROM odds_snapshots WHERE source='test' AND market_id IN (SELECT id FROM markets WHERE event_id=%s)", (ev,))
+            conn.execute("DELETE FROM events WHERE id=%s", (ev,))
+            conn.execute("DELETE FROM leagues WHERE key='test_detail'")
+            conn.commit()

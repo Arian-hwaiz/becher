@@ -49,6 +49,9 @@ pytest -q
 # Dashboard (Scanner wie bei Betburger): http://localhost:8501
 pip install -e ".[dashboard]"
 streamlit run dashboard/app.py
+# Admin-Bereich (Anbieter & Scraper, getrennt von der Nutzeransicht): http://localhost:8502
+streamlit run dashboard/admin.py --server.port 8502
+# Windows: alles ohne Fenster starten/stoppen: powershell -ExecutionPolicy Bypass -File scripts\becher.ps1 start|stop|status|restart
 ```
 
 Läuft die Datenbank schon und ist das Schema älter, spielt `python scripts/init_db.py` es erneut ein (idempotent).

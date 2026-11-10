@@ -41,6 +41,13 @@ CREATE TABLE IF NOT EXISTS collector_settings (
 -- Startseite je Buchmacher (Fallback-Link im Dashboard)
 ALTER TABLE bookmakers ADD COLUMN IF NOT EXISTS url TEXT;
 
+-- Einstellungen der Oberfläche (z. B. Farbschema hell/dunkel), gelten für Nutzeransicht und Admin-Bereich
+CREATE TABLE IF NOT EXISTS ui_settings (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Merker für einmalige Umstellungen bestehender Datenbanken (jede läuft genau einmal)
 CREATE TABLE IF NOT EXISTS schema_migrations (
     key         TEXT PRIMARY KEY,

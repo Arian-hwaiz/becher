@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     betfair_event_types: str = "1,2,7522"   # 1 Fußball, 2 Tennis, 7522 Basketball
     betfair_hours_ahead: int = 48
 
+    # Dashboard: Nutzeransicht (Port 8501) und getrennter Admin-Bereich (Port 8502)
+    dashboard_url: str = "http://localhost:8501"   # Adresse der Nutzeransicht, für Links aus dem Admin-Bereich
+    admin_password: str = ""                        # leer = Admin-Bereich ohne Passwort (nur auf dem eigenen PC sinnvoll)
+
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
     notify_min_percent: float = 1.0      # Telegram nur ab diesem konservativen Prozent

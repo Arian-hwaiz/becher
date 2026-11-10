@@ -125,7 +125,7 @@ FAQ: list[tuple[str, str, str]] = [
      "Becher nutzt Börsenquoten erst ab einer Mindestliquidität als Referenz."),
     ("Buchmacher und Quellen", "Collector und Scraper",
      "Ein **Collector** holt Quoten aus einer Quelle und speichert sie. Das kann eine API sein (The Odds API, Betfair) "
-     "oder ein **Scraper**, der die Quoten direkt von der Seite eines Buchmachers liest. Den Stand zeigt die Seite „Anbieter & Scraper“."),
+     "oder ein **Scraper**, der die Quoten direkt von der Seite eines Buchmachers liest. Den Stand zeigt die Seite „Anbieter & Scraper“ im Admin-Bereich (http://localhost:8502)."),
     ("Buchmacher und Quellen", "Credits (The Odds API)",
      "Das Kontingent der Odds-API. Ein Abruf kostet Sportarten × Regionen × Märkte Credits; der kostenlose Plan hat 500 im Monat. "
      "Eigene Scraper kosten keine Credits."),
@@ -147,8 +147,7 @@ FAQ: list[tuple[str, str, str]] = [
      "- **Auswertung → Überblick**: Kennzahlen, Quoten pro Stunde, Abdeckung je Buchmacher\n"
      "- **Auswertung → Wetten & CLV**: Wetten erfassen, CLV, Konto-Risiko, Devig-Methoden\n"
      "- **Auswertung → KI-Auswertung**: Einordnung der Treffer und Wochenbericht durch Claude\n"
-     "- **System → Anbieter & Scraper**: alle Anbieter, Scraper-Stand, aktivieren und deaktivieren\n"
-     "- **System → Collector-Läufe**: Protokoll der Abrufe\n"
+     "- **Admin-Bereich** (eigene Adresse, http://localhost:8502): Anbieter & Scraper mit Detailansicht je Anbieter, Collector-Läufe\n"
      "- **Hilfe → FAQ & Glossar**: diese Seite"),
     ("Dashboard", "Was bedeutet „Alter“ auf der Karte und „Referenz vor … s“?",
      "**Alter**: wie lange es her ist, dass der Scan den Treffer gefunden hat. **Referenz vor … s**: wie alt die Referenzquote "

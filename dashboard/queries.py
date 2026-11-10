@@ -274,8 +274,9 @@ def bookmakers_with_events(conn, past_hours: int = 3) -> pd.DataFrame:
 
 def events_overview(conn, bookmaker_id: int | None = None, past_hours: int = 3) -> pd.DataFrame:
     """Alle kommenden Spiele mit Quoten. Mit ``bookmaker_id`` nur die Spiele dieses Anbieters samt seiner 1X2-Quoten
-    und seinem Direkt-Link; ohne Anbieter die jeweils beste 1X2-Quote über alle Anbieter."""
-    return _df(conn, """
+    und seinem Direkt-Link; ohne Anbieter die jeweils beste 1X2-Quote über alle Anbieter (b1/bx/b2 = wer sie bietet).
+    ``payout`` ist die Auszahlung in Prozent aus diesen Quoten: über 100 heißt mögliche Surebet."""
+    df = _df(conn, """
         WITH latest AS (
             SELECT DISTINCT ON (o.market_id, o.bookmaker_id, o.outcome)
                    m.event_id, m.id AS market_id, m.type, m.period, o.bookmaker_id, o.outcome,
@@ -286,12 +287,19 @@ def events_overview(conn, bookmaker_id: int | None = None, past_hours: int = 3) 
             WHERE e.start_time > now() - make_interval(hours => %(past)s) AND NOT o.is_lay
             ORDER BY o.market_id, o.bookmaker_id, o.outcome, o.observed_at DESC
         ), picked AS (
-            SELECT * FROM latest WHERE %(bid)s::int IS NULL OR bookmaker_id = %(bid)s::int
+            SELECT a.*, b.name AS bookmaker FROM latest a JOIN bookmakers b ON b.id = a.bookmaker_id
+            WHERE %(bid)s::int IS NULL OR a.bookmaker_id = %(bid)s::int
         )
         SELECT e.id, e.start_time, l.name AS league, e.home_name, e.away_name,
                max(p.price) FILTER (WHERE p.type = 'h2h' AND p.period = 'full_time' AND p.outcome = 'home') AS p1,
                max(p.price) FILTER (WHERE p.type = 'h2h' AND p.period = 'full_time' AND p.outcome = 'draw') AS px,
                max(p.price) FILTER (WHERE p.type = 'h2h' AND p.period = 'full_time' AND p.outcome = 'away') AS p2,
+               (array_agg(p.bookmaker ORDER BY p.price DESC, p.bookmaker)
+                  FILTER (WHERE p.type = 'h2h' AND p.period = 'full_time' AND p.outcome = 'home'))[1] AS b1,
+               (array_agg(p.bookmaker ORDER BY p.price DESC, p.bookmaker)
+                  FILTER (WHERE p.type = 'h2h' AND p.period = 'full_time' AND p.outcome = 'draw'))[1] AS bx,
+               (array_agg(p.bookmaker ORDER BY p.price DESC, p.bookmaker)
+                  FILTER (WHERE p.type = 'h2h' AND p.period = 'full_time' AND p.outcome = 'away'))[1] AS b2,
                count(DISTINCT p.market_id) AS markets,
                count(*) AS quotes,
                max(p.observed_at) AS last_seen,
@@ -304,3 +312,110 @@ def events_overview(conn, bookmaker_id: int | None = None, past_hours: int = 3) 
         JOIN leagues l ON l.id = e.league_id
         GROUP BY e.id, e.start_time, l.name, e.home_name, e.away_name
         ORDER BY e.start_time, e.home_name""", {"bid": bookmaker_id, "past": past_hours})
+    df["payout"] = [payout_percent(a, b, c) for a, b, c in zip(df["p1"], df["px"], df["p2"])] if not df.empty else []
+    return df
+
+
+def payout_percent(p1, px, p2) -> float | None:
+    """Auszahlung in Prozent aus den Quoten eines Sieger-Marktes. Ohne Unentschieden-Quote als Zweiweg-Markt gerechnet.
+    Fehlt Heim oder Gast, gibt es keinen Wert."""
+    if pd.isna(p1) or pd.isna(p2):
+        return None
+    inv = 1 / p1 + 1 / p2 + (0 if pd.isna(px) else 1 / px)
+    return round(100 / inv, 2)
+
+
+def get_ui_setting(conn, key: str) -> str | None:
+    row = conn.execute("SELECT value FROM ui_settings WHERE key=%s", (key,)).fetchone()
+    return row["value"] if row else None
+
+
+def set_ui_setting(conn, key: str, value: str) -> None:
+    conn.execute("""INSERT INTO ui_settings (key, value) VALUES (%s, %s)
+                    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()""", (key, value))
+
+
+# ------------------------------------------------------------------ Admin: Detailansicht eines Anbieters
+
+def bookmaker_source_keys(conn, bookmaker_id: int) -> pd.DataFrame:
+    """Unter welchem Schlüssel der Anbieter in welcher Quelle geführt wird."""
+    return _df(conn, "SELECT source, source_key FROM bookmaker_source_keys WHERE bookmaker_id=%s ORDER BY source, source_key",
+               (bookmaker_id,))
+
+
+def bookmaker_leagues(conn, bookmaker_id: int, past_hours: int = 3) -> pd.DataFrame:
+    """Was der Anbieter für kommende Spiele liefert, je Liga: Spiele, aktuelle Quoten, Zeitraum, letzter Abruf."""
+    return _df(conn, """
+        WITH latest AS (
+            SELECT DISTINCT ON (o.market_id, o.outcome) m.event_id, o.observed_at
+            FROM odds_snapshots o JOIN markets m ON m.id = o.market_id JOIN events e ON e.id = m.event_id
+            WHERE o.bookmaker_id = %s AND NOT o.is_lay AND e.start_time > now() - make_interval(hours => %s)
+            ORDER BY o.market_id, o.outcome, o.observed_at DESC
+        )
+        SELECT l.name AS league, count(DISTINCT e.id) AS events, count(*) AS quotes,
+               min(e.start_time) AS first_start, max(e.start_time) AS last_start, max(a.observed_at) AS last_seen
+        FROM latest a JOIN events e ON e.id = a.event_id JOIN leagues l ON l.id = e.league_id
+        GROUP BY l.name ORDER BY l.name""", (bookmaker_id, past_hours))
+
+
+def bookmaker_markets(conn, bookmaker_id: int, past_hours: int = 3) -> pd.DataFrame:
+    """Welche Märkte der Anbieter für kommende Spiele liefert: Marktart, Linien, Spiele, aktuelle Quoten."""
+    return _df(conn, """
+        WITH latest AS (
+            SELECT DISTINCT ON (o.market_id, o.outcome) m.event_id, m.type, m.line
+            FROM odds_snapshots o JOIN markets m ON m.id = o.market_id JOIN events e ON e.id = m.event_id
+            WHERE o.bookmaker_id = %s AND NOT o.is_lay AND e.start_time > now() - make_interval(hours => %s)
+            ORDER BY o.market_id, o.outcome, o.observed_at DESC
+        )
+        SELECT type, count(DISTINCT event_id) AS events, count(*) AS quotes,
+               string_agg(DISTINCT regexp_replace(line::text, '0$', ''), ' · ') FILTER (WHERE line IS NOT NULL) AS lines
+        FROM latest GROUP BY type ORDER BY type""", (bookmaker_id, past_hours))
+
+
+def bookmaker_run_sources(conn, bookmaker_id: int) -> list[str]:
+    """Quellen (Collector), über die der Anbieter Quoten bekommt oder bekommen soll: eigener Scraper = Schlüssel des Anbieters."""
+    rows = conn.execute("""
+        SELECT key AS source FROM bookmakers WHERE id = %(b)s
+        UNION SELECT source FROM bookmaker_source_keys WHERE bookmaker_id = %(b)s
+        UNION SELECT DISTINCT source FROM odds_snapshots
+              WHERE bookmaker_id = %(b)s AND observed_at > now() - interval '14 days'""", {"b": bookmaker_id}).fetchall()
+    return sorted(r["source"] for r in rows if r["source"] not in ("demo", "test"))
+
+
+def source_runs(conn, sources: list[str], limit: int = 30) -> pd.DataFrame:
+    """Letzte Collector-Läufe der genannten Quellen."""
+    return _df(conn, """
+        SELECT started_at, finished_at, source, ok, events, snapshots, error
+        FROM collector_runs WHERE source = ANY(%s) ORDER BY started_at DESC LIMIT %s""", (list(sources), limit))
+
+
+def bookmaker_quotes_per_hour(conn, bookmaker_id: int, hours: int = 48) -> pd.DataFrame:
+    return _df(conn, """
+        SELECT date_trunc('hour', observed_at) AS hour, source, count(*) AS quotes
+        FROM odds_snapshots WHERE bookmaker_id = %s AND observed_at > now() - make_interval(hours => %s)
+        GROUP BY 1, 2 ORDER BY 1""", (bookmaker_id, hours))
+
+
+def bookmaker_health(row, runs: pd.DataFrame | None = None) -> tuple[str, str]:
+    """Ampel und ein Satz zum Zustand eines Anbieters. ``row``: Zeile aus admin_bookmakers, ``runs``: source_runs."""
+    status, data = row["scraper_status"], row["data_state"]
+    last_failed = runs is not None and not runs.empty and runs.iloc[0]["ok"] is False
+    if status == "blockiert":
+        return "🔴", "Blockiert: Der Anbieter sperrt automatische Abrufe. Das wird nicht umgangen."
+    if status == "nicht_moeglich":
+        return "🔴", "Nicht möglich: Für diesen Anbieter gibt es keinen gangbaren Weg."
+    if status == "laeuft":
+        if last_failed:
+            return "🟡", "Scraper eingerichtet, aber der letzte Lauf ist fehlgeschlagen."
+        if data == "frisch":
+            return "🟢", "Scraper läuft und liefert aktuelle Quoten."
+        if data == "keine":
+            return "🟡", "Scraper eingerichtet, aber es liegen noch keine Quoten vor."
+        return "🟡", "Scraper eingerichtet, aber die letzten Quoten sind alt. Läuft der Dauerbetrieb?"
+    if status == "in_arbeit":
+        return "🟡", "Scraper ist in Arbeit."
+    if status == "nicht_noetig":
+        return ("🟢" if data == "frisch" else "⚪"), "Kein eigener Scraper nötig, die Quoten kommen über eine Schnittstelle."
+    if data == "frisch":
+        return "🟢", "Kein eigener Scraper, aber eine andere Quelle liefert aktuelle Quoten."
+    return "⚪", "Offen: noch kein Scraper und keine aktuellen Quoten."
