@@ -14,8 +14,9 @@ class Settings(BaseSettings):
     odds_api_sports: str = "soccer_germany_bundesliga"
     odds_api_regions: str = "eu"
     odds_api_markets: str = "h2h,totals"
+    odds_api_min_remaining: int = 20       # unter dieser Reserve keine Abfragen mehr (Credits je Monat)
 
-    collect_interval_seconds: int = Field(default=300, ge=30)
+    collect_interval_seconds: int = Field(default=14400, ge=30)
     collectors: str = "odds_api"            # aktive Collector, kommagetrennt: odds_api, betfair
 
     # Betfair Exchange (https://developer.betfair.com): App-Key plus Session-Token

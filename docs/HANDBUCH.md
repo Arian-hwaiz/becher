@@ -101,7 +101,7 @@ Voraussetzungen auf dem PC:
 - **Python 3.11 oder neuer** (https://www.python.org, bei der Installation "Add to PATH" ankreuzen)
 - **Docker Desktop** (https://www.docker.com/products/docker-desktop) für die Datenbank
 - **Git** bzw. GitHub Desktop (ist vorhanden)
-- Ein kostenloser **API-Key von The Odds API** (https://the-odds-api.com, 500 Anfragen pro Monat gratis; für Dauerbetrieb das 20-Dollar-Paket)
+- Ein kostenloser **API-Key von The Odds API** (https://the-odds-api.com, 500 Credits pro Monat gratis, reicht für einen Durchlauf alle 4 Stunden; für dichteren Takt das 20K-Paket für 30 Dollar)
 
 Schritte in PowerShell im Ordner `C:\Users\arian\Documents\GitHub\becher`:
 
@@ -150,7 +150,7 @@ Wenn die Datenbank schon lief, bevor das Schema geändert wurde: `python scripts
 | --- | --- | --- |
 | Datenbank starten/stoppen | `make db-up` / `make db-down` oder die docker-compose-Befehle | Container `becher-db` auf Port 5432 |
 | Einmal Quoten holen | `python -m collectors.run --once` | Ein Durchlauf aller aktiven Collector (`COLLECTORS` in `.env`), `--only betfair` für einen |
-| Dauerbetrieb | `python -m collectors.run --scan` | Alle `COLLECT_INTERVAL_SECONDS` (Standard 300 s) ein Durchlauf, danach automatisch der Scan |
+| Dauerbetrieb | `python -m collectors.run --scan` | Alle `COLLECT_INTERVAL_SECONDS` (Standard 4 h, passend zum kostenlosen Plan) ein Durchlauf, danach automatisch der Scan |
 | Treffer suchen | `python scripts/scan.py` | Scan aller kommenden Spiele, schreibt `opportunities`, druckt Liste |
 | Treffer nur anzeigen | `python scripts/scan.py --dry-run --method shin --min-ev 0.01` | ohne Schreiben, andere Devig-Methode, Schwelle 1 % |
 | Dashboard | `streamlit run dashboard/app.py` | Browser auf http://localhost:8501 |
@@ -164,7 +164,16 @@ Wenn die Datenbank schon lief, bevor das Schema geändert wurde: `python scripts
 
 **Telegram-Alarm einrichten:** In Telegram `@BotFather` öffnen, `/newbot` senden, Namen vergeben, den Token in `.env` als `TELEGRAM_BOT_TOKEN` eintragen. Dem neuen Bot eine beliebige Nachricht schicken, dann im Browser `https://api.telegram.org/bot<TOKEN>/getUpdates` aufrufen und die Zahl hinter `"chat":{"id":` als `TELEGRAM_CHAT_ID` eintragen. Ab dann meldet `python -m collectors.run --scan` jeden neuen Treffer ab `NOTIFY_MIN_PERCENT` (Standard 1 %) mit Spiel, Markt, Buchmacher, Quote, fairer Quote und EV. Jeder Treffer wird je Programmlauf nur einmal gemeldet.
 
-**Kontingent der Odds-API:** Jeder Aufruf pro Liga und Region kostet 1 Anfrage je Markt. Mit 3 Ligen, 1 Region, 3 Märkten und 5-Minuten-Takt sind das ca. 2 600 Anfragen pro Tag. Der Collector loggt das Restkontingent (`x-requests-remaining`).
+**Kontingent der Odds-API:** Jede Abfrage kostet Sportarten × Regionen × Märkte Credits. Der kostenlose Starter-Plan hat 500 Credits im Monat, also etwa 16 am Tag. Richtwerte:
+
+| Einstellung | Credits je Durchlauf | Takt | Credits je Monat | Plan |
+| --- | --- | --- | --- | --- |
+| 1 Sport, eu, h2h+totals (Standard) | 2 | alle 4 h | ca. 360 | Starter (kostenlos) |
+| 1 Sport, eu, h2h | 1 | alle 2 h | ca. 360 | Starter |
+| 2 Sportarten, eu, h2h+totals | 4 | alle 15 min | ca. 11 500 | 20K ($30) |
+| 3 Sportarten, eu, 3 Märkte | 9 | alle 5 min | ca. 78 000 | 100K ($59) |
+
+Der Collector loggt je Abfrage die verbrauchten Credits und den Rest (`x-requests-remaining`) und stoppt unter `ODDS_API_MIN_REMAINING` (Standard 20), damit immer eine Reserve für Tests bleibt. Für einen ehrlichen Valuebet-Betrieb mit 5-Minuten-Takt reicht die Odds-API allein nicht; dafür sind die eigenen Collector (Phase 4) und Betfair gedacht.
 
 ---
 
@@ -363,7 +372,8 @@ Datei `.env` (aus `.env.example`), nie committen:
 | `ODDS_API_SPORTS` | Ligen, kommagetrennt, z. B. `soccer_germany_bundesliga,soccer_epl,basketball_nba` | Bundesliga, EPL |
 | `ODDS_API_REGIONS` | `eu`, `uk`, `us` … | `eu` |
 | `ODDS_API_MARKETS` | `h2h,totals,spreads` | alle drei |
-| `COLLECT_INTERVAL_SECONDS` | Takt des Collectors | 300 |
+| `COLLECT_INTERVAL_SECONDS` | Takt des Collectors | 14400 (4 h) |
+| `ODDS_API_MIN_REMAINING` | Reserve an Credits, unter der nicht mehr abgefragt wird | 20 |
 | `COLLECTORS` | aktive Collector: `odds_api`, `betfair` | `odds_api` |
 | `BETFAIR_APP_KEY`, `BETFAIR_SESSION_TOKEN` oder `BETFAIR_USERNAME`/`BETFAIR_PASSWORD` | Zugang zur Betfair Exchange API (Developer-Programm; Delayed-Key kostenlos) | leer |
 | `BETFAIR_EVENT_TYPES`, `BETFAIR_HOURS_AHEAD` | Sportarten (1 Fußball, 2 Tennis, 7522 Basketball) und Vorlauf | `1,2,7522`, 48 |

@@ -58,3 +58,23 @@ def test_quote_count():
     events = load()
     assert events[0].quote_count == 9 + 4 + 2
     assert events[1].quote_count == 3
+
+
+def test_collector_stops_below_credit_reserve(monkeypatch):
+    import httpx
+
+    from collectors.odds_api import OddsApiCollector
+    from common.config import settings
+
+    monkeypatch.setattr(settings, "odds_api_min_remaining", 20)
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.path)
+        return httpx.Response(200, json=[], headers={"x-requests-remaining": "21"})
+
+    c = OddsApiCollector(api_key="x", sports=["a", "b", "c"], regions="eu", markets="h2h,totals",
+                         client=httpx.Client(transport=httpx.MockTransport(handler)))
+    c.fetch()
+    # Erste Abfrage läuft (Rest unbekannt), danach 21 − 2 < 20 → die weiteren werden übersprungen
+    assert len(calls) == 1 and c.remaining == 21

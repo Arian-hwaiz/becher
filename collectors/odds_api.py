@@ -112,7 +112,12 @@ class OddsApiCollector(Collector):
         if not self.api_key:
             raise RuntimeError("ODDS_API_KEY fehlt (.env)")
         events: list[NormalizedEvent] = []
+        cost = len(self.regions.split(",")) * len(self.markets.split(","))   # Credits je Sport-Abfrage
         for sport in self.sports:
+            if self.remaining is not None and self.remaining - cost < settings.odds_api_min_remaining:
+                log.warning("odds_api %s: übersprungen, nur noch %d Credits (Reserve %d)", sport, self.remaining,
+                            settings.odds_api_min_remaining)
+                continue
             r = self.client.get(
                 f"{BASE_URL}/sports/{sport}/odds",
                 params={"regions": self.regions, "markets": self.markets,
@@ -122,7 +127,7 @@ class OddsApiCollector(Collector):
             rem = r.headers.get("x-requests-remaining")
             self.remaining = int(rem) if rem and rem.isdigit() else self.remaining
             batch = parse_events(r.json(), sport)
-            log.info("odds_api %s: %d Events, %d Quoten, Kontingent %s", sport, len(batch),
-                     sum(e.quote_count for e in batch), self.remaining)
+            log.info("odds_api %s: %d Events, %d Quoten, %d Credits verbraucht, Rest %s", sport, len(batch),
+                     sum(e.quote_count for e in batch), cost, self.remaining)
             events.extend(batch)
         return events

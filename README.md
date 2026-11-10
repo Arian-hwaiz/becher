@@ -40,7 +40,7 @@ docker compose -f infra/docker-compose.yml up -d
 python -m collectors.run --once
 python scripts/status.py
 
-# 5. Dauerbetrieb: alle 5 Minuten (COLLECT_INTERVAL_SECONDS)
+# 5. Dauerbetrieb: alle 4 Stunden (COLLECT_INTERVAL_SECONDS; kostenloser Odds-API-Plan = 500 Credits/Monat)
 python -m collectors.run
 
 # Tests (ohne Datenbank)
