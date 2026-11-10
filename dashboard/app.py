@@ -55,6 +55,12 @@ def load(fn, *args):
     return _cached(fn.__name__, *args)
 
 
+def local_time(ts) -> pd.Timestamp:
+    """Zeitpunkt in Wiener Zeit, für alle Anzeigen im Dashboard."""
+    t = pd.Timestamp(ts)
+    return (t.tz_localize("UTC") if t.tzinfo is None else t).tz_convert("Europe/Vienna")
+
+
 def fmt_age(ts) -> str:
     if ts is None or pd.isna(ts):
         return "–"
@@ -196,7 +202,7 @@ if page == "Scanner":
                                 f"<div class='meta'>{'Surebet' if is_arb else 'Valuebet'}<br>{r['sport']}<br>{fmt_age(r['found_at'])}</div></div>",
                                 unsafe_allow_html=True)
                 with c2:
-                    start = pd.Timestamp(r["start_time"]).strftime("%d.%m. %H:%M")
+                    start = local_time(r["start_time"]).strftime("%d.%m. %H:%M")
                     html = (f"<div class='opp'><div><b>{r['home_name']} – {r['away_name']}</b> "
                             f"<span class='meta'>· {r['league']} · {start}</span></div>"
                             f"<div class='meta'>{market_text(r)}</div>")
@@ -365,7 +371,7 @@ elif page == "Quoten je Event":
     if events.empty:
         st.info("Keine kommenden Events.")
     else:
-        events["label"] = events.apply(lambda r: f"{r['start_time']:%d.%m %H:%M}  {r['home_name']} – {r['away_name']}  ({r['league']})", axis=1)
+        events["label"] = events.apply(lambda r: f"{local_time(r['start_time']):%d.%m. %H:%M}  {r['home_name']} – {r['away_name']}  ({r['league']})", axis=1)
         labels = events["label"].tolist()
         wanted = st.query_params.get("event")   # von der Seite „Spiele“: /quoten?event=<id>
         start = 0
@@ -428,7 +434,7 @@ elif page == "Wetten":
     with st.expander("Neue Wette erfassen", expanded=stats["n"] == 0):
         events = load(q.upcoming_events, 300)
         ev_opts = {"– ohne Event –": None}
-        ev_opts.update({f"{r.start_time:%d.%m. %H:%M}  {r.home_name} – {r.away_name}": int(r.id) for r in events.itertuples()})
+        ev_opts.update({f"{local_time(r.start_time):%d.%m. %H:%M}  {r.home_name} – {r.away_name}": int(r.id) for r in events.itertuples()})
         f1, f2 = st.columns(2)
         ev_label = f1.selectbox("Event", list(ev_opts))
         event_id = ev_opts[ev_label]
@@ -568,7 +574,7 @@ elif page == "KI":
     else:
         st.subheader("Auswertungen")
         for _, r in reports.iterrows():
-            label = f"{r['created_at']:%d.%m. %H:%M} · {'Treffer-Einordnung' if r['kind'] == 'assessment' else 'Wochenbericht'} · {r['context_hours']} h"
+            label = f"{local_time(r['created_at']):%d.%m. %H:%M} · {'Treffer-Einordnung' if r['kind'] == 'assessment' else 'Wochenbericht'} · {r['context_hours']} h"
             with st.expander(label, expanded=bool(_ == 0)):
                 if r["kind"] == "assessment":
                     try:
