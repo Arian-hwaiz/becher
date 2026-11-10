@@ -179,7 +179,7 @@ Der Collector loggt je Abfrage die verbrauchten Credits und den Rest (`x-request
 
 ## 6. Das Dashboard
 
-Start: `streamlit run dashboard/app.py`. Acht Seiten, Auswahl links oben.
+Start: `streamlit run dashboard/app.py`. Die **Menüleiste oben** führt zu den acht Seiten: direkt zu „Treffer“ (Scanner) und „Quotenvergleich“ (Quoten je Event), dazu die Gruppen **Auswertung** (Überblick, Wetten & CLV, KI-Auswertung), **System** (Anbieter & Scraper, Collector-Läufe) und **Hilfe** (FAQ & Glossar). Die Seitenleiste links zeigt nur die Filter der aktuellen Seite. Jede Seite hat eine eigene Adresse, z. B. `http://localhost:8501/anbieter`.
 
 ### Scanner (Hauptseite, nach dem Vorbild der Betburger-Surebet-Seite)
 

@@ -24,7 +24,7 @@ from engine import account_health as ahmod
 from engine import clv as clvmod
 from engine import method_eval as memod
 
-st.set_page_config(page_title="Becher", page_icon="🍺", layout="wide")
+st.set_page_config(page_title="Becher", page_icon="🍺", layout="wide", initial_sidebar_state="auto")
 
 st.markdown(
     """
@@ -95,10 +95,34 @@ def outcome_text(row, outcome: str) -> str:
     return lab
 
 
-# ---------------------------------------------------------------- Sidebar
+# ---------------------------------------------------------------- Menü
 
-st.sidebar.title("🍺 Becher")
-page = st.sidebar.radio("Seite", ["Scanner", "Überblick", "Quoten je Event", "Wetten", "KI", "Administration", "Collector-Läufe", "FAQ"], label_visibility="collapsed")
+# Menüleiste oben, in Gruppen. Die Seitenleiste bleibt für die Filter der jeweiligen Seite frei.
+# (Gruppe, Titel im Menü, interner Schlüssel, Adresse, Symbol)
+MENU = [
+    ("", "Treffer", "Scanner", "treffer", ":material/radar:"),
+    ("", "Quotenvergleich", "Quoten je Event", "quoten", ":material/compare_arrows:"),
+    ("Auswertung", "Überblick", "Überblick", "ueberblick", ":material/monitoring:"),
+    ("Auswertung", "Wetten & CLV", "Wetten", "wetten", ":material/receipt_long:"),
+    ("Auswertung", "KI-Auswertung", "KI", "ki", ":material/psychology:"),
+    ("System", "Anbieter & Scraper", "Administration", "anbieter", ":material/settings:"),
+    ("System", "Collector-Läufe", "Collector-Läufe", "laeufe", ":material/history:"),
+    ("Hilfe", "FAQ & Glossar", "FAQ", "faq", ":material/help:"),
+]
+
+
+def _nothing() -> None:   # die Seiten werden unten in einer Kette gerendert; st.Page braucht nur ein Ziel
+    return None
+
+
+_nav: dict[str, list] = {}
+for _group, _title, _key, _path, _icon in MENU:
+    _nav.setdefault(_group, []).append(
+        st.Page(_nothing, title=_title, icon=_icon, url_path=_path, default=(_key == "Scanner")))
+st.logo(str(Path(__file__).parent / "logo.svg"), size="large")
+_current = st.navigation(_nav, position="top")
+_current.run()
+page = next(k for _, t, k, _, _ in MENU if t == _current.title)
 
 try:
     summary = load(q.summary)
@@ -150,7 +174,7 @@ if page == "Scanner":
             feed = feed.sort_values("start_time")
 
     head_l, head_r = st.columns([3, 2])
-    head_l.title("Scanner")
+    head_l.title("Treffer")
     head_r.metric("Treffer", 0 if feed.empty else len(feed),
                   help="Letzter Collector-Lauf: " + (fmt_age(summary["last_run"]["started_at"]) + " her" if summary["last_run"] else "noch keiner"))
 
@@ -275,7 +299,7 @@ elif page == "Überblick":
 # ---------------------------------------------------------------- Quoten je Event
 
 elif page == "Quoten je Event":
-    st.title("Quoten je Event")
+    st.title("Quotenvergleich")
     events = load(q.upcoming_events, 200)
     if events.empty:
         st.info("Keine kommenden Events.")
@@ -503,7 +527,7 @@ elif page == "KI":
 elif page == "Administration":
     from common.config import settings as _settings
 
-    st.title("Administration")
+    st.title("Anbieter & Scraper")
     st.caption("Alle Anbieter mit Datenlage und Scraper-Stand. Inaktive Anbieter werden weiter gesammelt, aber vom Scan ignoriert "
                "(keine Treffer, keine Referenz). Änderungen in der Tabelle werden sofort gespeichert.")
     with db.connect() as conn:
