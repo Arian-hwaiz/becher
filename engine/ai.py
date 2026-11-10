@@ -24,6 +24,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from common.config import settings
+from engine import account_health, method_eval
 
 log = logging.getLogger(__name__)
 
@@ -35,6 +36,8 @@ CLV (Closing Line Value) sowie den Zustand der Datensammlung.
 Regeln:
 - Rechne die Kennzahlen nicht neu, sondern ordne sie ein. Wenn Zahlen fehlen oder alt sind, sag das.
 - Positiver CLV über viele Wetten ist der einzige belastbare Beleg für eine Kante; kurzfristiger Gewinn nicht.
+- „account_health“ ist eine Heuristik für die Limitgefahr je Buchmacherkonto, „devig_method_scores“ bewertet die
+  Devig-Methoden an abgerechneten Wetten (Brier/Log-Loss, kleiner = besser; unter 30 Wetten nur Rauschen).
 - Achte auf Risiken: alte Referenzquoten, dünne Liquidität, nur eine Referenz, sehr hohe Prozente (oft Fehlerquoten,
   Limitgefahr beim Buchmacher), Märkte kurz vor Anpfiff, auffällig viele Treffer bei einem Buchmacher.
 - Schreibe Deutsch, knapp, konkret, ohne Floskeln. Keine Wettempfehlung als Garantie formulieren."""
@@ -123,6 +126,17 @@ def build_context(conn, hours: int = 24, max_opportunities: int = 40, now: datet
         "clv_by_bookmaker": [{"bookmaker": r["name"], "bets": r["n"], "avg_clv": _f(r["clv"]), "with_clv": r["n_clv"], "profit": _f(r["profit"])}
                              for r in by_bm],
         "clv_by_market": clv_by_market_type(conn),
+        "account_health": [
+            {"bookmaker": h.bookmaker, "bets": h.bets, "risk_score": h.score, "level": h.level, "avg_clv": h.avg_clv,
+             "roi_pct": _f(h.roi_pct), "odd_stakes_pct": h.odd_stakes_pct, "high_ev_pct": h.high_ev_pct,
+             "bets_per_active_day": h.bets_per_active_day, "reasons": h.reasons}
+            for h in account_health.evaluate(conn)
+        ],
+        "devig_method_scores": [
+            {"market": m.market_type, "method": m.method, "bets": m.n, "brier": round(m.brier, 4),
+             "logloss": round(m.logloss, 4), "avg_clv": round(m.avg_clv, 2), "recommended": m.recommended}
+            for m in method_eval.evaluate(conn)
+        ],
         "collectors": [{"source": r["source"], "runs": r["n"], "ok": r["ok"], "last": _ts(r["last"]), "avg_snapshots": _f(r["snapshots"])}
                        for r in runs],
         "coverage": [{"bookmaker": r["name"], "kind": r["kind"], "snapshots": r["n"], "last_seen": _ts(r["last_seen"])} for r in coverage],

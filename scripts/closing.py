@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # Projektwurzel importierbar machen
 
 from common import db
+from engine import account_health, method_eval
 from engine.clv import capture_closing_odds, update_bets_clv
 
 
@@ -29,6 +30,20 @@ def report(conn) -> None:
     tot = conn.execute("SELECT count(*) AS n, avg(clv) AS clv, sum(CASE WHEN clv > 0 THEN 1 ELSE 0 END) AS pos FROM bets WHERE clv IS NOT NULL").fetchone()
     if tot["n"]:
         print(f"\nCLV gesamt: Ø {tot['clv']:+.2f} % über {tot['n']} Wetten, {tot['pos']} davon positiv ({tot['pos'] / tot['n'] * 100:.0f} %)")
+    scores = method_eval.evaluate(conn)
+    if scores:
+        print("\nDevig-Methoden an abgerechneten Wetten (Brier/Log-Loss: kleiner = besser):")
+        for m in scores:
+            print(f"  {m.market_type:<8} {m.method:<15} n={m.n:<4} Brier {m.brier:.4f}  LogLoss {m.logloss:.4f}  Ø CLV {m.avg_clv:+.2f} % {'← Empfehlung' if m.recommended else ''}")
+    health = account_health.evaluate(conn)
+    if health:
+        print("\nKonto-Risiko (0 unauffällig … 100 akut):")
+        for h in health:
+            print(f"  {h.bookmaker:<18} {h.score:>3} ({h.level}) · {h.bets} Wetten")
+            for r in h.reasons:
+                print(f"      • {r}")
+            for t in h.tips:
+                print(f"      💡 {t}")
 
 
 def main() -> None:

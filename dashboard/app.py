@@ -20,7 +20,9 @@ import streamlit as st
 from common import db
 from dashboard import queries as q
 from engine import surebet as sb
+from engine import account_health as ahmod
 from engine import clv as clvmod
+from engine import method_eval as memod
 
 st.set_page_config(page_title="Becher", page_icon="🍺", layout="wide")
 
@@ -383,6 +385,26 @@ elif page == "Wetten":
                          labels={"bookmaker": "", "clv": "Ø CLV %", "n_clv": "Wetten"})
             fig.update_layout(height=300, margin=dict(l=10, r=10, t=10, b=10))
             st.plotly_chart(fig, use_container_width=True)
+        st.subheader("Konto-Risiko je Buchmacher")
+        st.caption("Heuristik: wie auffällig das Wettverhalten für den Buchmacher wirkt (Limitgefahr). 0 = unauffällig, 100 = akut.")
+        with db.connect() as conn:
+            health = ahmod.evaluate(conn)
+            mscores = memod.evaluate(conn)
+        hcols = st.columns(min(len(health), 4) or 1)
+        for i, h in enumerate(health):
+            with hcols[i % len(hcols)]:
+                st.metric(h.bookmaker, f"{h.score} ({h.level})", help=f"{h.bets} Wetten · Ø CLV {h.avg_clv:+.2f} %" if h.avg_clv is not None else f"{h.bets} Wetten")
+                for r in h.reasons:
+                    st.caption(f"• {r}")
+                for t in h.tips:
+                    st.caption(f"💡 {t}")
+        if mscores:
+            st.subheader("Devig-Methode je Markt (an abgerechneten Wetten)")
+            st.caption("Brier und Log-Loss: je kleiner, desto besser trifft die Methode die Schlusslinie. Empfehlung erst ab 30 Wetten je Markt.")
+            mdf = pd.DataFrame([{"Markt": m.market_type, "Methode": m.method, "Wetten": m.n, "Brier": round(m.brier, 4),
+                                 "Log-Loss": round(m.logloss, 4), "Ø CLV %": round(m.avg_clv, 2), "Empfehlung": "✅" if m.recommended else ""}
+                                for m in mscores])
+            st.dataframe(mdf, hide_index=True, use_container_width=True)
         settled = bets_df.dropna(subset=["clv"]).sort_values("placed_at")
         if len(settled) >= 2:
             st.subheader("CLV-Verlauf (kumuliert)")

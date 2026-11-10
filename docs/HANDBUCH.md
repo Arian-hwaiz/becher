@@ -44,7 +44,9 @@ Becher ist ein **privater Quoten-Scanner**. Er sammelt laufend Wettquoten vieler
 
 - Treffer von Claude einordnen und priorisieren lassen, Wochenbericht erzeugen (Phase 6).
 
-**Was noch fehlt:** Collector direkt bei einzelnen Buchmachern (Phase 4, Rest), Feinheiten der KI-Schicht (Devig-Methode am CLV wählen, Limit-Risiko).
+- Konto-Risiko (Limitgefahr) je Buchmacher einschätzen und die beste Devig-Methode je Markt an den eigenen Ergebnissen bewerten.
+
+**Was noch fehlt:** Collector direkt bei einzelnen Buchmachern (Phase 4, Rest).
 
 ---
 
@@ -156,7 +158,7 @@ Wenn die Datenbank schon lief, bevor das Schema geändert wurde: `python scripts
 | Team-Matching prüfen | `python scripts/match_teams.py --review` | zeigt unsichere Aliase (Konfidenz < 0,95) |
 | Schlussquoten + CLV | `python scripts/closing.py --report` | sichert Schlussquoten begonnener Spiele, berechnet CLV der eigenen Wetten, druckt Auswertung je Buchmacher (läuft auch automatisch im Collector mit `--scan`) |
 | KI-Auswertung | `python scripts/ai_report.py --assess` / `--weekly` / `--context` | Treffer einordnen, Wochenbericht, oder nur den Kontext ohne KI anzeigen; `--out datei.md` speichert |
-| Tests | `pytest -q` | 56 Tests, Datenbanktests nur mit `BECHER_TEST_DATABASE_URL` |
+| Tests | `pytest -q` | 59 Tests, Datenbanktests nur mit `BECHER_TEST_DATABASE_URL` |
 
 **Empfohlener Rhythmus:** Collector dauerhaft laufen lassen (ein PowerShell-Fenster), Scan alle paar Minuten (zweites Fenster, z. B. `while ($true) { python scripts/scan.py; Start-Sleep 120 }`), Dashboard offen. Die Odds-API liefert Prematch-Quoten mit einigen Minuten Verzögerung; für Live-Wetten ist Becher noch nicht gedacht.
 
@@ -196,6 +198,10 @@ Ein Spiel auswählen, dann je Markt eine Tabelle Buchmacher × Ausgang mit der j
 ![Wetten](bilder/dashboard-wetten.png)
 
 Hier werden die eigenen Wetten erfasst und am Ende gemessen. Oben Kennzahlen (Anzahl, Gewinn der abgerechneten Wetten, Ø CLV, Anteil positiver CLV). Im Formular Event und Markt aus der Datenbank wählen (dann kann Becher später die Schlussquote zuordnen), Buchmacher, Ausgang, Quote, Einsatz, optional die faire Quote zum Zeitpunkt des Setzens (steht in der Trefferkarte) und eine Notiz. Darunter die Tabelle aller Wetten mit Ergebnis, Gewinn und CLV, ein Abschnitt zum Abrechnen offener Wetten (gewonnen, verloren, void, halb gewonnen/verloren; die Auszahlung rechnet Becher), ein Balkendiagramm Ø CLV je Buchmacher und der kumulierte CLV-Verlauf.
+
+**Konto-Risiko je Buchmacher:** Darunter zeigt Becher je Buchmacher einen Risiko-Score 0 bis 100 dafür, wie auffällig das eigene Wettverhalten für den Buchmacher wirkt (Limitgefahr): hoher CLV, viele Fehlerquoten, krumme Einsätze, viele Wetten pro Tag, hoher ROI. Zu jedem Score stehen die Gründe und Tipps (Einsätze runden, Treffer auf mehrere Konten verteilen, ab und zu eine unauffällige Wette). Das ist eine Heuristik, keine Prognose. Logik: `engine/account_health.py`.
+
+**Devig-Methode je Markt:** Sobald abgerechnete Wetten mit Schlussquoten vorliegen, bewertet Becher für jeden Markttyp alle fünf Devig-Methoden daran, wie gut die aus der Schlusslinie berechnete Wahrscheinlichkeit die Ergebnisse trifft (Brier-Score und Log-Loss, kleiner ist besser) und zeigt den mittleren CLV je Methode. Ab 30 Wetten je Markt wird die beste Methode als Empfehlung markiert; die kann man dann mit `--method` im Scan nutzen. Logik: `engine/method_eval.py`, auch in `python scripts/closing.py --report`.
 
 **Wie der CLV entsteht:** Nach Anpfiff sichert `scripts/closing.py` (oder der Collector mit `--scan`) je Markt, Buchmacher und Ausgang die letzte Quote vor dem Anstoß als Schlussquote (`closing_odds`, höchstens 6 h alt). Aus den Schlussquoten der scharfen Referenzen (Pinnacle & Co.) wird mit der Power-Methode die faire Schlussquote gebildet; CLV = eigene Quote ÷ faire Schlussquote − 1. Positiver CLV über viele Wetten ist der eigentliche Beleg für eine Kante, unabhängig davon, ob die einzelne Wette gewonnen hat.
 
@@ -384,7 +390,7 @@ Aus `docs/konzept/04-entwicklungsplan-kern.md`, Stand 10. 11. 2026:
 | Dashboard | Scanner-Feed, Überblick, Quoten je Event, Läufe | ✅ fertig (Grundversion) |
 | 4 Eigene Collector | Betfair Exchange API (Back/Lay + Liquidität) ✅; Grundgerüst für Buchmacher-Collector per Playwright ✅; konkrete Buchmacher-Parser, Perioden und mehr Märkte ⏳ | 🔶 teilweise |
 | 5 Tracking + CLV | Wetten erfassen (Dashboard-Seite „Wetten“) ✅, Schlussquoten automatisch speichern ✅, CLV je Wette ✅, Auswertung je Buchmacher ✅, Telegram-Alarm ✅; Auswertung nach Markt/Devig-Methode ⏳ | ✅ Grundversion |
-| 6 KI-Schicht | Treffer erklären und priorisieren ✅, Wochenbericht ✅, Kontext aus Treffern/Wetten/CLV/Collectoren ✅; Devig-Methode je Markt am CLV wählen ⏳, Limit-Risiko je Konto ⏳ | ✅ Grundversion |
+| 6 KI-Schicht | Treffer erklären und priorisieren ✅, Wochenbericht ✅, Kontext aus Treffern/Wetten/CLV/Collectoren ✅, Devig-Methode je Markt an Ergebnissen bewerten ✅, Konto-Risiko (Limitgefahr) je Buchmacher ✅ | ✅ |
 
 Verbesserungen, die im Konzept vorgesehen sind und noch offen stehen: Backtesting über die gespeicherte Zeitreihe, Monte-Carlo-Simulation der Strategie, Schlussquoten-Vorhersage, Account-Health (Limit-Risiko je Buchmacher).
 

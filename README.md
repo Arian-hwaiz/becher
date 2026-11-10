@@ -63,6 +63,8 @@ Läuft die Datenbank schon und ist das Schema älter, spielt `python scripts/ini
 
 **Phase 6 (KI-Schicht):** `engine/ai.py` baut aus Treffern, eigenen Wetten, CLV je Buchmacher/Markt und Collector-Zustand einen Kontext und lässt Claude (`AI_MODEL`, Standard claude-opus-5-5) die Treffer priorisieren (strukturierte Antwort mit Prioritäten, Gründen, Risiken) oder einen Wochenbericht schreiben. Dashboard-Seite „KI“ oder `python scripts/ai_report.py --assess | --weekly | --context`. Antworten landen in `ai_reports`. Braucht `ANTHROPIC_API_KEY` und `pip install -e ".[ai]"`.
 
+**Konto-Risiko und Methodenwahl:** `engine/account_health.py` schätzt je Buchmacher die Limitgefahr aus dem eigenen Wettverhalten (Score 0–100 mit Gründen und Tipps), `engine/method_eval.py` bewertet die Devig-Methoden je Markttyp an abgerechneten Wetten (Brier/Log-Loss) und empfiehlt ab 30 Wetten die beste. Beides auf der Seite „Wetten“, in `scripts/closing.py --report` und im KI-Kontext.
+
 **Rechenkern (Phase 3):**
 - `engine/surebet.py`: Surebets und Middles generisch über eine Auszahlungsmatrix (Viertellinien, Wettsteuer, Börsenkommission). Hintergrund: Dokument 06.
 - `engine/devig.py`: Marge herausrechnen mit fünf Methoden (multiplikativ, additiv, Power, Shin, Logit) und gewichteter Konsens mehrerer Referenzen mit Alters- und Liquiditätsfilter.
