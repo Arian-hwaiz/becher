@@ -8,7 +8,7 @@
 # Kostet keine Odds-API-Credits. Blockt ein Anbieter (403/Cloudflare/Captcha), schaltet sich sein
 # Collector selbst ab und der Anbieter steht in der Administration auf „blockiert“.
 param(
-    [string]$Collectors = "bwin,admiral,interwetten",
+    [string]$Collectors = "bwin,admiral,interwetten,betathome",
     [int]$Interval = 900
 )
 

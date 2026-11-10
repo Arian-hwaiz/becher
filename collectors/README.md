@@ -12,6 +12,7 @@ Ein Collector pro Buchmacher bzw. Odds-API. Geplante Sprache: Go.
 | `bwin` | `bwin.py` | bwin-Ligaseite per Playwright (JSON `widgetdata`, ohne Login) | h2h, totals (alle Linien), Direkt-Link zum Spiel |
 | `admiral` | `admiral.py` | admiral.at-Ligaseite per Playwright (WebSocket-Daten, ohne Login) | h2h, totals (alle Linien), Direkt-Link zum Spiel |
 | `interwetten` | `interwetten.py` | interwetten.com-Ligaseite per Playwright (HTML, ohne Login) | h2h (1X2), Direkt-Link zum Spiel |
+| `betathome` | `betathome.py` | bet-at-home-Länderseite per Playwright (WebSocket/WAMP, ohne Login) | h2h, totals (Hauptlinie), Direkt-Link zum Spiel |
 | (Vorlage) | `browser_base.py` | Buchmacher-Website per Playwright | je Buchmacher `league_urls` + `parse_page` implementieren |
 
 Aktive Collector stehen in `.env` unter `COLLECTORS=odds_api,betfair`. Start: `python -m collectors.run --once` (einmal), `python -m collectors.run --scan` (Schleife mit Scan nach jedem Durchlauf), `--only betfair` für einen einzelnen.
@@ -27,5 +28,5 @@ Seiten, Mindestabstand `SCRAPE_INTERVAL_SECONDS` zwischen Läufen, Ligen über `
 Kostet keine Odds-API-Credits. Einmalig: `pip install -e ".[browser]"` und `python -m playwright install chromium`.
 
 Stand der Erkundung (November 2026): Pinnacle blockiert (Cloudflare 403), Tipico blockiert (Verbindung
-wird abgebrochen), bwin läuft, ADMIRAL (admiral.at) läuft, Interwetten läuft (nur 1X2, Über/Unter steht erst auf der Spielseite). Start einzeln:
+wird abgebrochen), bwin läuft, ADMIRAL (admiral.at) läuft, Interwetten läuft (nur 1X2, Über/Unter steht erst auf der Spielseite), bet-at-home läuft. Start einzeln:
 `python -m collectors.run --once --only bwin --scan` bzw. `--only admiral`; dauerhaft über `COLLECTORS=odds_api,bwin,admiral`.

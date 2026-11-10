@@ -348,3 +348,18 @@ DO $$ BEGIN
     scraper_note = 'Playwright, liest das HTML der Ligaseite (ohne Browser 403), nur 1X2, Direkt-Links'
   WHERE key = 'interwetten';
 EXCEPTION WHEN unique_violation THEN NULL; END $$;
+
+-- bet-at-home (collectors/betathome.py), eigener Scraper unter source='betathome'. Steuer 0 (Rohquoten).
+INSERT INTO bookmakers (key, name, country, kind, tax_rate, tax_mode, commission) VALUES
+  ('betathome', 'bet-at-home', 'AT', 'soft', 0, 'none', 0)
+ON CONFLICT (key) DO NOTHING;
+UPDATE bookmakers SET url = 'https://www.bet-at-home.com/de' WHERE key = 'betathome' AND url IS NULL;
+INSERT INTO bookmaker_source_keys (source, source_key, bookmaker_id)
+SELECT 'betathome', 'betathome', id FROM bookmakers WHERE key = 'betathome'
+ON CONFLICT DO NOTHING;
+DO $$ BEGIN
+  INSERT INTO schema_migrations (key) VALUES ('2026-11-scraper-betathome');
+  UPDATE bookmakers SET scraper_status = 'laeuft',
+    scraper_note = 'Playwright, liest die WebSocket-Daten (WAMP) der Länderseite, h2h + totals, Direkt-Links'
+  WHERE key = 'betathome';
+EXCEPTION WHEN unique_violation THEN NULL; END $$;
