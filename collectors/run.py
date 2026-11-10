@@ -31,7 +31,10 @@ def make_collector(name: str) -> Collector:
     if name == "bwin":
         from collectors.bwin import BwinCollector
         return BwinCollector()
-    raise ValueError(f"unbekannter Collector {name!r}; bekannt: odds_api, betfair, bwin")
+    if name == "admiral":
+        from collectors.admiral import AdmiralCollector
+        return AdmiralCollector()
+    raise ValueError(f"unbekannter Collector {name!r}; bekannt: odds_api, betfair, bwin, admiral")
 
 
 def run_collector(collector: Collector) -> tuple[int, int]:
@@ -81,7 +84,7 @@ def run_once(names: list[str] | None = None, scan: bool = False) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true", help="nur ein Durchlauf")
-    parser.add_argument("--only", help="nur diesen Collector (odds_api, betfair, bwin)")
+    parser.add_argument("--only", help="nur diesen Collector (odds_api, betfair, bwin, admiral)")
     parser.add_argument("--scan", action="store_true", help="nach jedem Durchlauf scannen")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")

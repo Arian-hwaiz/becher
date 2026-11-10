@@ -301,3 +301,16 @@ WHERE key = 'pinnacle' AND scraper_status IN ('offen', 'in_arbeit');
 UPDATE bookmakers SET scraper_status = 'blockiert',
   scraper_note = 'Verbindung wird sofort abgebrochen (HTTP/2-Fehler, Bot-Filter), nicht umgangen'
 WHERE key = 'tipico' AND scraper_status IN ('offen', 'in_arbeit');
+
+-- ADMIRAL Sportwetten Österreich (collectors/admiral.py), eigener Scraper unter source='admiral'.
+-- Steuer vorerst 0 (österreichische Wettgebühr trägt nach unserem Stand der Anbieter; offen).
+INSERT INTO bookmakers (key, name, country, kind, tax_rate, tax_mode, commission) VALUES
+  ('admiral', 'ADMIRAL', 'AT', 'soft', 0, 'none', 0)
+ON CONFLICT (key) DO NOTHING;
+UPDATE bookmakers SET url = 'https://www.admiral.at' WHERE key = 'admiral' AND url IS NULL;
+INSERT INTO bookmaker_source_keys (source, source_key, bookmaker_id)
+SELECT 'admiral', 'admiral', id FROM bookmakers WHERE key = 'admiral'
+ON CONFLICT DO NOTHING;
+UPDATE bookmakers SET scraper_status = 'laeuft',
+  scraper_note = 'Playwright, liest die WebSocket-Daten der Ligaseite (admiral.at), h2h + totals, Direkt-Links'
+WHERE key = 'admiral' AND scraper_status IN ('offen', 'in_arbeit');
