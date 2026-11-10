@@ -45,6 +45,12 @@ function Get-BecherProzesse([string]$Muster) {
         Where-Object { $_.CommandLine -and ($_.CommandLine -like "*$Muster*") }
 }
 
+function Stop-Pid([int]$Id) {
+    # taskkill meldet „nicht gefunden“, wenn /T den Prozess schon mit dem Elternprozess beendet hat. Unter
+    # $ErrorActionPreference = "Stop" macht Windows PowerShell 5.1 daraus einen Abbruch, daher abfangen.
+    try { & taskkill.exe /PID $Id /T /F 2>&1 | Out-Null } catch { }
+}
+
 function Stop-Teil([string]$Name) {
     $pidFile = Join-Path $runDir "$Name.pid"
     $ids = @()
@@ -53,7 +59,7 @@ function Stop-Teil([string]$Name) {
     $ids = $ids | Where-Object { $_ -gt 0 } | Sort-Object -Unique
     foreach ($id in $ids) {
         if (Get-Process -Id $id -ErrorAction SilentlyContinue) {
-            & taskkill.exe /PID $id /T /F 2>$null | Out-Null     # /T beendet auch Kindprozesse (z. B. den Browser des Scrapers)
+            Stop-Pid $id     # /T beendet auch Kindprozesse (z. B. den Browser des Scrapers)
         }
     }
     Remove-Item $pidFile -ErrorAction SilentlyContinue
@@ -61,10 +67,16 @@ function Stop-Teil([string]$Name) {
 }
 
 function Close-AlteFenster {
-    # Fenster aus früheren Starts ("Becher Scraper", "Becher Dashboard", "Becher Admin") schließen. Andere Fenster bleiben unberührt.
+    # Fenster aus früheren Starts ("Becher Scraper", "Becher Dashboard", "Becher Admin" oder ohne Titel mit Becher-Befehl)
+    # schließen. Andere Fenster bleiben unberührt.
     Get-Process powershell, pwsh -ErrorAction SilentlyContinue |
         Where-Object { $_.Id -ne $PID -and $_.MainWindowTitle -like "Becher *" } |
-        ForEach-Object { & taskkill.exe /PID $_.Id /T /F 2>$null | Out-Null; Write-Host "Altes Fenster geschlossen: $($_.MainWindowTitle)" }
+        ForEach-Object { $t = $_.MainWindowTitle; Stop-Pid $_.Id; Write-Host "Altes Fenster geschlossen: $t" }
+    # Fenster älterer Starts ohne Titel: PowerShell mit -NoExit, die im Repo streamlit oder collectors.run gestartet hat
+    Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe' OR Name = 'pwsh.exe'" |
+        Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -and $_.CommandLine -like "*-NoExit*" -and
+                       $_.CommandLine -like "*$repo*" -and ($_.CommandLine -like "*streamlit*" -or $_.CommandLine -like "*collectors.run*") } |
+        ForEach-Object { Stop-Pid $_.ProcessId; Write-Host "Altes Fenster geschlossen (Prozess $($_.ProcessId))" }
 }
 
 function Start-Teil([string]$Name) {
