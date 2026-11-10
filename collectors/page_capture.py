@@ -41,11 +41,12 @@ class PageCapture:
     responses: list[tuple[str, bytes]] = field(default_factory=list)   # (URL, Body) passender Antworten
     ws_frames: list[bytes | str] = field(default_factory=list)          # empfangene WebSocket-Frames
     links: list[tuple[str, str]] = field(default_factory=list)          # (href, Linktext)
+    html: str = ""                                                      # fertig geladenes HTML (capture_html)
 
 
 def capture_pages(urls: list[str], want_response: Callable[[str], bool] | None = None,
                   capture_ws: bool = False, wait_s: float = 8.0,
-                  link_contains: str | None = None) -> list[PageCapture]:
+                  link_contains: str | None = None, capture_html: bool = False) -> list[PageCapture]:
     """Öffnet jede URL nacheinander in einem Browser und gibt pro Seite das Mitgeschnittene zurück."""
     try:
         from playwright.sync_api import sync_playwright
@@ -90,6 +91,8 @@ def capture_pages(urls: list[str], want_response: Callable[[str], bool] | None =
                         cap.links = page.eval_on_selector_all(
                             "a[href]", "els => els.map(e => [e.href, (e.innerText || '').trim()])")
                         cap.links = [(h, t) for h, t in cap.links if link_contains in h]
+                    if capture_html:
+                        cap.html = page.content()
                 finally:
                     ctx.close()
                 results.append(cap)

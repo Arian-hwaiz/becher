@@ -333,3 +333,18 @@ ON CONFLICT DO NOTHING;
 UPDATE bookmakers SET scraper_status = 'laeuft',
   scraper_note = 'Playwright, liest die WebSocket-Daten der Ligaseite (admiral.at), h2h + totals, Direkt-Links'
 WHERE key = 'admiral' AND scraper_status IN ('offen', 'in_arbeit');
+
+-- Interwetten (collectors/interwetten.py), eigener Scraper unter source='interwetten'. Steuer 0 (Rohquoten).
+INSERT INTO bookmakers (key, name, country, kind, tax_rate, tax_mode, commission) VALUES
+  ('interwetten', 'Interwetten', 'AT', 'soft', 0, 'none', 0)
+ON CONFLICT (key) DO NOTHING;
+UPDATE bookmakers SET url = 'https://www.interwetten.com' WHERE key = 'interwetten' AND url IS NULL;
+INSERT INTO bookmaker_source_keys (source, source_key, bookmaker_id)
+SELECT 'interwetten', 'interwetten', id FROM bookmakers WHERE key = 'interwetten'
+ON CONFLICT DO NOTHING;
+DO $$ BEGIN
+  INSERT INTO schema_migrations (key) VALUES ('2026-11-scraper-interwetten');
+  UPDATE bookmakers SET scraper_status = 'laeuft',
+    scraper_note = 'Playwright, liest das HTML der Ligaseite (ohne Browser 403), nur 1X2, Direkt-Links'
+  WHERE key = 'interwetten';
+EXCEPTION WHEN unique_violation THEN NULL; END $$;
